@@ -36,6 +36,7 @@ spec:
             #!/usr/bin/env sh
             source .jx/variables.sh
             make release
+            cat .jx/variables.sh
         - image: gcr.io/kaniko-project/executor:debug-v1.3.0
           name: build-and-push-image
           resources: {}
