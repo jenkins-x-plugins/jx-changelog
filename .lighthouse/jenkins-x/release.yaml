@@ -22,7 +22,9 @@ spec:
           script: |
             #!/usr/bin/env bash
             VERSION=$(jx-release-version)
+            ls -al
             echo $VERSION > VERSION
+            cat VERSION
         - image: gcr.io/jenkinsxio/jx-boot:3.0.755
           name: jx-variables
           resources: {}
@@ -36,6 +38,8 @@ spec:
             #!/usr/bin/env sh
             source .jx/variables.sh
             make release
+            ls -al
+            cat VERSION
             cat .jx/variables.sh
         - image: gcr.io/kaniko-project/executor:debug-v1.3.0
           name: build-and-push-image
