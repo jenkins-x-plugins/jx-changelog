@@ -55,17 +55,25 @@ func (r *GitUserResolver) GitUserSliceAsUserDetailsSlice(users []scm.User) ([]je
 // * making a call to the gitProvider
 // as often user info is not complete in a git response
 func (r *GitUserResolver) Resolve(user *scm.User) (*jenkinsv1.UserDetails, error) {
-	if r == nil || user == nil || user.Login == "" {
+	if r == nil || user == nil || user.Name == "" {
 		return nil, nil
 	}
 
-	id := naming.ToValidName(user.Login)
-	u := r.cache.GetUser(id)
+	u := r.cache.GetUser(user.Name)
 	if u != nil {
 		return u, nil
 	}
 
 	ctx := context.Background()
+
+	if user.Login == "" {
+		u = r.GitUserToUser(user)
+		err := r.cache.CreateOrUpdateUser(u)
+		if err != nil {
+			return u, errors.Wrapf(err, "failed to cache User")
+		}
+		return u, nil
+	}
 
 	scmUser, _, err := r.GitProvider.Users.FindLogin(ctx, user.Login)
 	if scmUser == nil || scmhelpers.IsScmNotFound(err) {
@@ -81,7 +89,7 @@ func (r *GitUserResolver) Resolve(user *scm.User) (*jenkinsv1.UserDetails, error
 		login = strings.Replace(scmUser.Name, " ", "-", -1)
 		login = strings.ToLower(login)
 	}
-	id = naming.ToValidName(login)
+	id := naming.ToValidName(login)
 	u.Name = naming.ToValidName(id)
 	err = r.cache.CreateOrUpdateUser(u)
 	if err != nil {
