@@ -248,7 +248,7 @@ func (o *Options) Run() error {
 		if previousDate != "" {
 			previousRev, err = gits.GetRevisionBeforeDateText(o.Git(), dir, previousDate)
 			if err != nil {
-				return fmt.Errorf("failed to find commits before date %s: %s", previousDate, err)
+				return errors.Wrapf(err, "failed to find commits before date %s", previousDate)
 			}
 		}
 	}
@@ -282,14 +282,14 @@ func (o *Options) Run() error {
 	if templatesDir == "" {
 		chartFile, err := helmhelpers.FindChart(dir)
 		if err != nil {
-			return fmt.Errorf("could not find helm chart %s", err)
+			return errors.Wrap(err, "could not find helm chart")
 		}
 		path, _ := filepath.Split(chartFile)
 		templatesDir = filepath.Join(path, "templates")
 	}
 	err = os.MkdirAll(templatesDir, files.DefaultDirWritePermissions)
 	if err != nil {
-		return fmt.Errorf("Failed to create the templates directory %s due to %s", templatesDir, err)
+		return errors.Wrapf(err, "failed to create the templates directory %s", templatesDir)
 	}
 
 	log.Logger().Infof("Generating change log from git ref %s => %s", info(previousRev), info(currentRev))
@@ -327,20 +327,22 @@ func (o *Options) Run() error {
 		log.Logger().Warnf("failed to find git commits between revision %s and %s due to: %s", previousRev, currentRev, err.Error())
 	}
 	if commits != nil {
-		commits1 := *commits
-		if len(commits1) > 0 {
-			if strings.HasPrefix(commits1[0].Message, "release ") {
+		commitSlice := *commits
+		if len(commitSlice) > 0 {
+			if strings.HasPrefix(commitSlice[0].Message, "release ") {
 				// remove the release commit from the log
-				tmp := commits1[1:]
+				tmp := commitSlice[1:]
 				commits = &tmp
 			}
 		}
 		log.Logger().Debugf("Found commits:")
-		for _, commit := range *commits {
-			log.Logger().Debugf("  commit %s", commit.Hash)
-			log.Logger().Debugf("  Author: %s <%s>", commit.Author.Name, commit.Author.Email)
-			log.Logger().Debugf("  Date: %s", commit.Committer.When.Format(time.ANSIC))
-			log.Logger().Debugf("      %s\n\n\n", commit.Message)
+		if commits != nil {
+			for _, commit := range *commits {
+				log.Logger().Debugf("  commit %s", commit.Hash)
+				log.Logger().Debugf("  Author: %s <%s>", commit.Author.Name, commit.Author.Email)
+				log.Logger().Debugf("  Date: %s", commit.Committer.When.Format(time.ANSIC))
+				log.Logger().Debugf("      %s\n\n\n", commit.Message)
+			}
 		}
 	}
 	version := o.Version
@@ -407,8 +409,7 @@ func (o *Options) Run() error {
 	log.Logger().Debugf("Generated release notes:\n\n%s\n", markdown)
 
 	if version != "" && o.UpdateRelease {
-		filterTags, err := gits.FilterTags(o.Git(), dir, version)
-		tags, err := filterTags, err
+		tags, err := gits.FilterTags(o.Git(), dir, version)
 		if err != nil {
 			return errors.Wrapf(err, "listing tags with pattern %s in %s", version, dir)
 		}
@@ -465,7 +466,11 @@ func (o *Options) Run() error {
 		} else {
 			rel, _, err = scmClient.Releases.Update(ctx, fullName, rel.ID, releaseInfo)
 			if err != nil {
-				log.Logger().Warnf("Failed to update the release for %s number: %d: %s", fullName, rel.ID, err)
+				id := -1
+				if rel != nil {
+					id = rel.ID
+				}
+				log.Logger().Warnf("Failed to update the release for %s number: %d: %s", fullName, id, err)
 				return nil
 			}
 		}
@@ -496,17 +501,17 @@ func (o *Options) Run() error {
 	data, err := yaml.Marshal(release)
 
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to unmarshal Release")
 	}
 	if data == nil {
-		return fmt.Errorf("Could not marshal release to yaml")
+		return fmt.Errorf("could not marshal release to yaml")
 	}
 	releaseFile := filepath.Join(templatesDir, o.ReleaseYamlFile)
 	crdFile := filepath.Join(templatesDir, o.CrdYamlFile)
 	if o.GenerateReleaseYaml {
 		err = ioutil.WriteFile(releaseFile, data, files.DefaultFileWritePermissions)
 		if err != nil {
-			return fmt.Errorf("Failed to save Release YAML file %s: %s", releaseFile, err)
+			return errors.Wrapf(err, "failed to save Release YAML file %s", releaseFile)
 		}
 		log.Logger().Infof("generated: %s", info(releaseFile))
 	}
@@ -515,12 +520,12 @@ func (o *Options) Run() error {
 	if o.GenerateCRD {
 		exists, err := files.FileExists(crdFile)
 		if err != nil {
-			return fmt.Errorf("Failed to check for CRD YAML file %s: %s", crdFile, err)
+			return errors.Wrapf(err, "failed to check for CRD YAML file %s", crdFile)
 		}
 		if o.OverwriteCRD || !exists {
 			err = ioutil.WriteFile(crdFile, []byte(ReleaseCrdYaml), files.DefaultFileWritePermissions)
 			if err != nil {
-				return fmt.Errorf("Failed to save Release CRD YAML file %s: %s", crdFile, err)
+				return errors.Wrapf(err, "failed to save Release CRD YAML file %s", crdFile)
 			}
 			log.Logger().Infof("generated: %s", info(crdFile))
 
@@ -793,7 +798,10 @@ func fullCommitMessageText(commit *object.Commit) string {
 		}
 		return nil
 	}
-	fn(commit) //nolint:errcheck
+	err := fn(commit) //nolint:errcheck
+	if err != nil {
+		log.Logger().Warnf("failed to create commit message %s", err.Error())
+	}
 	return answer
 
 }

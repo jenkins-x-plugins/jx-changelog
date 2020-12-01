@@ -10,6 +10,7 @@ import (
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/stringhelpers"
 	"github.com/jenkins-x/jx-logging/v3/pkg/log"
+	"github.com/pkg/errors"
 )
 
 type JiraService struct {
@@ -20,7 +21,7 @@ type JiraService struct {
 
 func CreateJiraIssueProvider(serverURL, username, apiToken, project string, batchMode bool) (IssueProvider, error) {
 	if serverURL == "" {
-		return nil, fmt.Errorf("No JIRA server URL for server!")
+		return nil, fmt.Errorf("no JIRA server URL for server")
 	}
 	var httpClient *http.Client
 	if apiToken != "" {
@@ -78,7 +79,7 @@ func (i *JiraService) SearchIssuesClosedSince(_ time.Time) ([]*scm.Issue, error)
 func (i *JiraService) CreateIssue(issue *scm.Issue) (*scm.Issue, error) {
 	project, _, err := i.JiraClient.Project.Get(i.Project)
 	if err != nil {
-		return nil, fmt.Errorf("Could not find project %s: %s", i.Project, err)
+		return nil, errors.Wrapf(err, "could not find project %s", i.Project)
 	}
 	ji := i.gitToJiraIssue(issue)
 	issueTypes := project.IssueTypes
@@ -86,17 +87,19 @@ func (i *JiraService) CreateIssue(issue *scm.Issue) (*scm.Issue, error) {
 		it := issueTypes[0]
 		ji.Fields.Type.Name = it.Name
 	}
-	jira, resp, err := i.JiraClient.Issue.Create(ji)
+	created, resp, err := i.JiraClient.Issue.Create(ji)
 	if err != nil {
 		buf := new(bytes.Buffer)
-		_, err = buf.ReadFrom(resp.Body)
-		if err != nil {
-			return nil, err
+		if resp != nil {
+			_, err = buf.ReadFrom(resp.Body)
+			if err != nil {
+				return nil, err
+			}
 		}
 		msg := buf.String()
-		return nil, fmt.Errorf("Failed to create issue: %s due to: %s", msg, err)
+		return nil, errors.Wrapf(err, "failed to create issue: %s", msg)
 	}
-	return i.jiraToGitIssue(jira), nil
+	return i.jiraToGitIssue(created), nil
 }
 
 func (i *JiraService) CreateIssueComment(_ string, _ string) error {

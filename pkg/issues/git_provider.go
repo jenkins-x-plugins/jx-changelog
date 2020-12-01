@@ -20,10 +20,10 @@ type GitIssueProvider struct {
 
 func CreateGitIssueProvider(scmClient *scm.Client, owner string, repository string) (IssueProvider, error) {
 	if owner == "" {
-		return nil, fmt.Errorf("No owner specified")
+		return nil, fmt.Errorf("no owner specified")
 	}
 	if repository == "" {
-		return nil, fmt.Errorf("No owner specified")
+		return nil, fmt.Errorf("no repository specified")
 	}
 	fullName := scm.Join(owner, repository)
 	return &GitIssueProvider{
@@ -76,7 +76,7 @@ func (i *GitIssueProvider) IssueURL(key string) string {
 func issueKeyToNumber(key string) (int, error) {
 	n, err := strconv.Atoi(key)
 	if err != nil {
-		return n, fmt.Errorf("Failed to convert issue key '%s' to number: %s", key, err)
+		return n, errors.Wrapf(err, "failed to convert issue key '%s' to number", key)
 	}
 	return n, nil
 }

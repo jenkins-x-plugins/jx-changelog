@@ -21,19 +21,19 @@ func FindChart(dir string) (string, error) {
 		return "", errors.Wrapf(err, "no Chart.yaml file found in directory '%s'", dir)
 	}
 	if !exists {
-		files, err := filepath.Glob(filepath.Join(dir, "*", "Chart.yaml"))
+		fs, err := filepath.Glob(filepath.Join(dir, "*", "Chart.yaml"))
 		if err != nil {
 			return "", errors.Wrap(err, "no Chart.yaml file found")
 		}
-		if len(files) > 0 {
-			chartFile = files[0]
+		if len(fs) > 0 {
+			chartFile = fs[0]
 		} else {
-			files, err = filepath.Glob(filepath.Join(dir, "*", "*", "Chart.yaml"))
+			fs, err = filepath.Glob(filepath.Join(dir, "*", "*", "Chart.yaml"))
 			if err != nil {
 				return "", errors.Wrap(err, "no Chart.yaml file found")
 			}
-			if len(files) > 0 {
-				for _, file := range files {
+			if len(fs) > 0 {
+				for _, file := range fs {
 					if !strings.HasSuffix(file, "/preview/Chart.yaml") {
 						return file, nil
 					}

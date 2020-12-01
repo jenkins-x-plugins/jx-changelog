@@ -109,8 +109,8 @@ func GenerateMarkdown(releaseSpec *v1.ReleaseSpec, gitInfo *giturl.GitRepository
 	issues := releaseSpec.Issues
 	issueMap := map[string]*v1.IssueSummary{}
 	for _, issue := range issues {
-		copy := issue
-		issueMap[copy.ID] = &copy
+		cp := issue
+		issueMap[cp.ID] = &cp
 	}
 
 	for _, cs := range releaseSpec.Commits {
