@@ -1,10 +1,12 @@
 package changelog_test
 
 import (
+	"context"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
 
+	"github.com/jenkins-x/go-scm/scm"
 	scmfake "github.com/jenkins-x/go-scm/scm/driver/fake"
 	v1 "github.com/jenkins-x/jx-api/v3/pkg/apis/jenkins.io/v1"
 	fakejx "github.com/jenkins-x/jx-api/v3/pkg/client/clientset/versioned/fake"
@@ -20,11 +22,12 @@ func TestCommandChangelog(t *testing.T) {
 	tmpDir, err := ioutil.TempDir("", "")
 	require.NoError(t, err, "could not create temp dir")
 
-	gitURL := "https://github.com/jstrachan/kubeconawesome"
 	owner := "jstrachan"
 	repo := "kubeconawesome"
+	fullName := scm.Join(owner, repo)
+	gitURL := "https://github.com/" + fullName
 
-	scmFake, _ := scmfake.NewDefault()
+	scmClient, _ := scmfake.NewDefault()
 
 	_, o := changelog.NewCmdChangelogCreate()
 
@@ -36,7 +39,7 @@ func TestCommandChangelog(t *testing.T) {
 	o.JXClient = fakejx.NewSimpleClientset()
 	o.Namespace = "jx"
 	o.ScmFactory.Dir = tmpDir
-	o.ScmFactory.ScmClient = scmFake
+	o.ScmFactory.ScmClient = scmClient
 	o.ScmFactory.Owner = owner
 	o.ScmFactory.Repository = repo
 	o.BuildNumber = "1"
@@ -62,4 +65,14 @@ func TestCommandChangelog(t *testing.T) {
 
 		t.Logf("commit %d is SHA %s user %s at %s\n", i, commit.SHA, commit.Author.Name, commit.Author.Email)
 	}
+
+	ctx := context.TODO()
+	releases, _, err := scmClient.Releases.List(ctx, fullName, scm.ReleaseListOptions{})
+	require.NoError(t, err, "failed to list releases on %s", fullName)
+	require.Len(t, releases, 1, "should have one release for %s", fullName)
+	release := releases[0]
+	t.Logf("title: %s\n", release.Title)
+	t.Logf("description: %s\n", release.Description)
+	t.Logf("tag: %s\n", release.Tag)
+
 }

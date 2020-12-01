@@ -18,6 +18,6 @@ require (
 
 )
 
-replace github.com/jenkins-x/go-scm => github.com/jstrachan/go-scm v1.5.1-0.20201130164909-df6cb883b264
+replace github.com/jenkins-x/go-scm => github.com/jstrachan/go-scm v1.5.1-0.20201201055349-98694c17b897
 
 go 1.15
