@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/jenkins-x-plugins/jx-changelog/pkg/cmd/changelog"
+	"github.com/jenkins-x-plugins/jx-changelog/pkg/cmd/create"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/options"
 	"github.com/jenkins-x/jx-logging/v3/pkg/log"
 
@@ -30,7 +30,7 @@ func Main() *cobra.Command {
 	}
 	o := options.BaseOptions{}
 	o.AddBaseFlags(cmd)
-	cmd.AddCommand(cobras.SplitCommand(changelog.NewCmdChangelogCreate()))
+	cmd.AddCommand(cobras.SplitCommand(create.NewCmdChangelogCreate()))
 	cmd.AddCommand(cobras.SplitCommand(version.NewCmdVersion()))
 	return cmd
 }

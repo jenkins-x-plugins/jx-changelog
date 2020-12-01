@@ -1,4 +1,4 @@
-package changelog_test
+package create_test
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/jenkins-x-plugins/jx-changelog/pkg/cmd/create"
 	"github.com/jenkins-x/go-scm/scm"
 	scmfake "github.com/jenkins-x/go-scm/scm/driver/fake"
 	v1 "github.com/jenkins-x/jx-api/v3/pkg/apis/jenkins.io/v1"
@@ -14,11 +15,10 @@ import (
 	"github.com/jenkins-x/jx-helpers/v3/pkg/yamls"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/jenkins-x-plugins/jx-changelog/pkg/cmd/changelog"
 	"github.com/stretchr/testify/require"
 )
 
-func TestCommandChangelog(t *testing.T) {
+func TesCreateChangelog(t *testing.T) {
 	tmpDir, err := ioutil.TempDir("", "")
 	require.NoError(t, err, "could not create temp dir")
 
@@ -29,7 +29,7 @@ func TestCommandChangelog(t *testing.T) {
 
 	scmClient, _ := scmfake.NewDefault()
 
-	_, o := changelog.NewCmdChangelogCreate()
+	_, o := create.NewCmdChangelogCreate()
 
 	g := o.Git()
 

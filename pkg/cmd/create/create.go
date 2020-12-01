@@ -1,4 +1,4 @@
-package changelog
+package create
 
 import (
 	"bufio"
@@ -134,7 +134,7 @@ e.g. define environment variables GIT_USERNAME and GIT_API_TOKEN
 `
 
 	cmdLong = templates.LongDesc(`
-		Generates a Changelog for the latest tag
+		Creates a Changelog for the latest tag
 
 		This command will generate a Changelog as markdown for the git commit range given. 
 		If you are using GitHub it will also update the GitHub Release with the changelog. You can disable that by passing'--update-release=false'
@@ -147,19 +147,19 @@ e.g. define environment variables GIT_USERNAME and GIT_API_TOKEN
 
 		You can opt out of the release YAML generation via the '--generate-yaml=false' option
 		
-		To update the release notes on GitHub / Gitea this command needs a git API token.
+		To update the release notes on your git provider needs a git API token which is usually provided via the Tekton git authentication mechanism.
 
 `) + GitAccessDescription
 
 	cmdExample = templates.Examples(`
 		# generate a changelog on the current source
-		jx step changelog
+		jx-changelog create
 
 		# specify the version to use
-		jx step changelog --version 1.2.3
+		jx-changelog create --version 1.2.3
 
 		# specify the version and a header template
-		jx step changelog --header-file docs/dev/changelog-header.md --version 1.2.3
+		jx-changelog create --header-file docs/dev/changelog-header.md --version 1.2.3
 
 `)
 
@@ -171,9 +171,9 @@ e.g. define environment variables GIT_USERNAME and GIT_API_TOKEN
 func NewCmdChangelogCreate() (*cobra.Command, *Options) {
 	o := &Options{}
 	cmd := &cobra.Command{
-		Use:     "changelog",
+		Use:     "create",
 		Short:   "Creates a changelog for a git tag",
-		Aliases: []string{"changes"},
+		Aliases: []string{"changelog", "changes", "publish"},
 		Long:    cmdLong,
 		Example: cmdExample,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -204,7 +204,6 @@ func NewCmdChangelogCreate() (*cobra.Command, *Options) {
 	cmd.Flags().StringVarP(&o.Footer, "footer", "", "", "The changelog footer in markdown for the changelog. Can use go template expressions on the ReleaseSpec object: https://golang.org/pkg/text/template/")
 	cmd.Flags().StringVarP(&o.FooterFile, "footer-file", "", "", "The file name of the changelog footer in markdown for the changelog. Can use go template expressions on the ReleaseSpec object: https://golang.org/pkg/text/template/")
 
-	//cmd.Flags().StringVarP(&o.Dir, "dir", "", "", "The directory of the Git repository. Defaults to the current working directory")
 	o.ScmFactory.AddFlags(cmd)
 	o.BaseOptions.AddBaseFlags(cmd)
 	return cmd, o
@@ -479,8 +478,8 @@ func (o *Options) Run() error {
 			url = stringhelpers.UrlJoin(gitInfo.HttpsURL(), "releases/tag", tagName)
 		}
 		release.Spec.ReleaseNotesURL = url
-		log.Logger().Infof("Updated the release information at %s", info(url))
-		log.Logger().Infof("added description: %s", markdown)
+		log.Logger().Infof("updated the release information at %s", info(url))
+		log.Logger().Debugf("added description: %s", markdown)
 	} else if o.OutputMarkdownFile != "" {
 		err := ioutil.WriteFile(o.OutputMarkdownFile, []byte(markdown), files.DefaultFileWritePermissions)
 		if err != nil {
