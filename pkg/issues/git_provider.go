@@ -63,7 +63,7 @@ func (i *GitIssueProvider) SearchIssues(query string) ([]*scm.Issue, error) {
 	return answer, nil
 }
 
-func (i *GitIssueProvider) SearchIssuesClosedSince(t time.Time) ([]*scm.Issue, error) {
+func (i *GitIssueProvider) SearchIssuesClosedSince(_ time.Time) ([]*scm.Issue, error) {
 	// TODO
 	//return i.GitProvider.SearchIssuesClosedSince(i.Owner, i.Repository, t)
 	return nil, nil
@@ -81,7 +81,7 @@ func issueKeyToNumber(key string) (int, error) {
 	return n, nil
 }
 
-func (i *GitIssueProvider) CreateIssue(issue *scm.Issue) (*scm.Issue, error) {
+func (i *GitIssueProvider) CreateIssue(_ *scm.Issue) (*scm.Issue, error) {
 	return nil, errors.Errorf("TODO")
 }
 

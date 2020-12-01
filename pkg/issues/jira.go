@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	jira "github.com/andygrunwald/go-jira"
+	"github.com/andygrunwald/go-jira"
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/stringhelpers"
 	"github.com/jenkins-x/jx-logging/v3/pkg/log"
@@ -58,7 +58,7 @@ func (i *JiraService) SearchIssues(query string) ([]*scm.Issue, error) {
 	if query != "" {
 		jql += " AND text ~ " + query
 	}
-	answer := []*scm.Issue{}
+	var answer []*scm.Issue
 	issues, _, err := i.JiraClient.Issue.Search(jql, nil)
 	if err != nil {
 		return answer, err
@@ -70,7 +70,7 @@ func (i *JiraService) SearchIssues(query string) ([]*scm.Issue, error) {
 	return answer, nil
 }
 
-func (i *JiraService) SearchIssuesClosedSince(t time.Time) ([]*scm.Issue, error) {
+func (i *JiraService) SearchIssuesClosedSince(_ time.Time) ([]*scm.Issue, error) {
 	log.Logger().Warn("TODO SearchIssuesClosedSince() not yet implemented for JIRA")
 	return nil, nil
 }
@@ -99,7 +99,7 @@ func (i *JiraService) CreateIssue(issue *scm.Issue) (*scm.Issue, error) {
 	return i.jiraToGitIssue(jira), nil
 }
 
-func (i *JiraService) CreateIssueComment(key string, comment string) error {
+func (i *JiraService) CreateIssueComment(_ string, _ string) error {
 	return fmt.Errorf("TODO")
 }
 
@@ -160,11 +160,6 @@ func jiraAvatarUrl(user *jira.User) string {
 		}
 	}
 	return answer
-}
-
-func jiraTimeToTimeP(t jira.Time) *time.Time {
-	tt := time.Time(t)
-	return &tt
 }
 
 func (i *JiraService) gitToJiraIssue(issue *scm.Issue) *jira.Issue {

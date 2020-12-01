@@ -248,7 +248,7 @@ func (o *Options) Run() error {
 		if previousDate != "" {
 			previousRev, err = gits.GetRevisionBeforeDateText(o.Git(), dir, previousDate)
 			if err != nil {
-				return fmt.Errorf("Failed to find commits before date %s: %s", previousDate, err)
+				return fmt.Errorf("failed to find commits before date %s: %s", previousDate, err)
 			}
 		}
 	}
@@ -282,7 +282,7 @@ func (o *Options) Run() error {
 	if templatesDir == "" {
 		chartFile, err := helmhelpers.FindChart(dir)
 		if err != nil {
-			return fmt.Errorf("Could not find helm chart %s", err)
+			return fmt.Errorf("could not find helm chart %s", err)
 		}
 		path, _ := filepath.Split(chartFile)
 		templatesDir = filepath.Join(path, "templates")
@@ -770,7 +770,7 @@ func (o *Options) addIssuesAndPullRequests(spec *v1.ReleaseSpec, commit *v1.Comm
 
 // toV1Labels converts git labels to IssueLabel
 func toV1Labels(labels []string) []v1.IssueLabel {
-	answer := []v1.IssueLabel{}
+	var answer []v1.IssueLabel
 	for _, label := range labels {
 		answer = append(answer, v1.IssueLabel{
 			Name: label,

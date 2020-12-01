@@ -54,13 +54,6 @@ func createCommitGroup(title string) *CommitGroup {
 
 // ConventionalCommitTypeToTitle returns the title of the conventional commit type
 // see: https://conventionalcommits.org/
-func ConventionalCommitTypeToTitle(kind string) *CommitGroup {
-	answer := ConventionalCommitTitles[strings.ToLower(kind)]
-	if answer == nil {
-		answer = &CommitGroup{strings.Title(kind), unknownKindOrder}
-	}
-	return answer
-}
 
 // ParseCommit parses a conventional commit
 // see: https://conventionalcommits.org/
@@ -109,7 +102,7 @@ type GroupAndCommitInfos struct {
 
 // GenerateMarkdown generates the markdown document for the commits
 func GenerateMarkdown(releaseSpec *v1.ReleaseSpec, gitInfo *giturl.GitRepository) (string, error) {
-	commitInfos := []*CommitInfo{}
+	var commitInfos []*CommitInfo
 
 	groupAndCommits := map[int]*GroupAndCommitInfos{}
 
@@ -231,10 +224,10 @@ func GenerateMarkdown(releaseSpec *v1.ReleaseSpec, gitInfo *giturl.GitRepository
 }
 
 func describeIssue(info *giturl.GitRepository, issue *v1.IssueSummary) string {
-	return describeIssueShort(info, issue) + issue.Title + describeUser(info, issue.User)
+	return describeIssueShort(issue) + issue.Title + describeUser(info, issue.User)
 }
 
-func describeIssueShort(info *giturl.GitRepository, issue *v1.IssueSummary) string {
+func describeIssueShort(issue *v1.IssueSummary) string {
 	prefix := ""
 	id := issue.ID
 	if len(id) > 0 {
@@ -291,7 +284,7 @@ func describeCommit(info *giturl.GitRepository, cs *v1.CommitSummary, ci *Commit
 	for _, issueId := range cs.IssueIDs {
 		issue := issueMap[issueId]
 		if issue != nil {
-			issueText += " " + describeIssueShort(info, issue)
+			issueText += " " + describeIssueShort(issue)
 		}
 	}
 	return prefix + lines[0] + describeUser(info, user) + issueText

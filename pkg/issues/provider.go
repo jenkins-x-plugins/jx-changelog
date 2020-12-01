@@ -1,7 +1,6 @@
 package issues
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/jenkins-x/go-scm/scm"
@@ -28,25 +27,6 @@ type IssueProvider interface {
 
 	// HomeURL returns the home URL of the issue tracker
 	HomeURL() string
-}
-
-func CreateIssueProvider(kind string, serverURL, username, apiToken, project string, batchMode bool) (IssueProvider, error) {
-	switch kind {
-	case Jira:
-		return CreateJiraIssueProvider(serverURL, username, apiToken, project, batchMode)
-	default:
-		return nil, fmt.Errorf("Unsupported issue provider kind: %s", kind)
-	}
-}
-
-func ProviderAccessTokenURL(kind string, url string) string {
-	switch kind {
-	case Jira:
-		// TODO handle on premise servers too by detecting the URL is at atlassian.com
-		return "https://id.atlassian.com/manage/api-tokens"
-	default:
-		return ""
-	}
 }
 
 // GetIssueProvider returns the kind of issue provider

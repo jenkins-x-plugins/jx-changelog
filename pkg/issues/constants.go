@@ -6,12 +6,3 @@ const (
 	Trello   = "trello"
 	Git      = "git"
 )
-
-var (
-	IssueOpen   = "open"
-	IssueClosed = "closed"
-)
-
-var (
-	IssueTrackerKinds = []string{Bugzilla, Jira, Trello}
-)
