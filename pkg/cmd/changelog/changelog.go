@@ -480,6 +480,7 @@ func (o *Options) Run() error {
 		}
 		release.Spec.ReleaseNotesURL = url
 		log.Logger().Infof("Updated the release information at %s", info(url))
+		log.Logger().Infof("added description: %s", markdown)
 	} else if o.OutputMarkdownFile != "" {
 		err := ioutil.WriteFile(o.OutputMarkdownFile, []byte(markdown), files.DefaultFileWritePermissions)
 		if err != nil {
@@ -523,6 +524,11 @@ func (o *Options) Run() error {
 				return fmt.Errorf("Failed to save Release CRD YAML file %s: %s", crdFile, err)
 			}
 			log.Logger().Infof("generated: %s", info(crdFile))
+
+			err = gitclient.Add(o.Git(), templatesDir)
+			if err != nil {
+				return errors.Wrapf(err, "failed to git add in dir %s", templatesDir)
+			}
 		}
 	}
 	appName := ""
