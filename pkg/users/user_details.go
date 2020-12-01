@@ -1,8 +1,6 @@
 package users
 
 import (
-	"fmt"
-
 	v1 "github.com/jenkins-x/jx-api/v3/pkg/apis/jenkins.io/v1"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/kube/naming"
 	"github.com/jenkins-x/jx-logging/v3/pkg/log"
@@ -21,7 +19,7 @@ func (s *UserDetailService) GetUser(login string) *v1.UserDetails {
 
 func (s *UserDetailService) CreateOrUpdateUser(u *v1.UserDetails) error {
 	if u == nil || u.Login == "" {
-		return fmt.Errorf("Unable to get or create user, nil or missing login")
+		return nil
 	}
 
 	log.Logger().Infof("CreateOrUpdateUser: %s <%s>", u.Login, u.Email)

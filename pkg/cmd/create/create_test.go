@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TesCreateChangelog(t *testing.T) {
+func TestCreateChangelog(t *testing.T) {
 	tmpDir, err := ioutil.TempDir("", "")
 	require.NoError(t, err, "could not create temp dir")
 
