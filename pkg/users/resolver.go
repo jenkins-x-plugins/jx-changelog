@@ -25,7 +25,7 @@ type GitUserResolver struct {
 func (r *GitUserResolver) GitSignatureAsUser(signature *object.Signature) (*jenkinsv1.UserDetails, error) {
 	// We can't resolve no info so shortcircuit
 	if signature.Name == "" && signature.Email == "" {
-		return nil, errors.Errorf("both name and email are empty")
+		return nil, nil
 	}
 	gitUser := &scm.User{
 		Email: signature.Email,
