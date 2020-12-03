@@ -19,7 +19,7 @@ import (
 	"github.com/jenkins-x-plugins/jx-changelog/pkg/issues"
 	"github.com/jenkins-x-plugins/jx-changelog/pkg/users"
 	"github.com/jenkins-x/go-scm/scm"
-	jxc "github.com/jenkins-x/jx-api/v3/pkg/client/clientset/versioned"
+	jxc "github.com/jenkins-x/jx-api/v4/pkg/client/clientset/versioned"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/builds"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/cmdrunner"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/files"
@@ -41,8 +41,8 @@ import (
 
 	"github.com/ghodss/yaml"
 
-	jenkinsio "github.com/jenkins-x/jx-api/v3/pkg/apis/jenkins.io"
-	v1 "github.com/jenkins-x/jx-api/v3/pkg/apis/jenkins.io/v1"
+	jenkinsio "github.com/jenkins-x/jx-api/v4/pkg/apis/jenkins.io"
+	v1 "github.com/jenkins-x/jx-api/v4/pkg/apis/jenkins.io/v1"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/options"
 	"github.com/jenkins-x/jx-logging/v3/pkg/log"
 	"github.com/spf13/cobra"

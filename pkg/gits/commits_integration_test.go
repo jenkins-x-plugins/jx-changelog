@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/jenkins-x-plugins/jx-changelog/pkg/gits"
-	v1 "github.com/jenkins-x/jx-api/v3/pkg/apis/jenkins.io/v1"
+	v1 "github.com/jenkins-x/jx-api/v4/pkg/apis/jenkins.io/v1"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/gitclient/giturl"
 	"github.com/stretchr/testify/assert"
 )

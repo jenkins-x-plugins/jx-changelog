@@ -12,7 +12,7 @@ import (
 
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 
-	jenkinsv1 "github.com/jenkins-x/jx-api/v3/pkg/apis/jenkins.io/v1"
+	jenkinsv1 "github.com/jenkins-x/jx-api/v4/pkg/apis/jenkins.io/v1"
 )
 
 // GitUserResolver allows git users to be converted to Jenkins X users
@@ -128,17 +128,6 @@ func (r *GitUserResolver) UpdateUserFromPRAuthor(author *jenkinsv1.User, pullReq
 }
 */
 
-// UserToGitUser performs type conversion from a Jenkins X User to a Git User
-func (r *GitUserResolver) UserToGitUser(id string, user *jenkinsv1.User) *scm.User {
-	return &scm.User{
-		Login:  id,
-		Email:  user.Spec.Email,
-		Name:   user.Spec.Name,
-		Link:   user.Spec.URL,
-		Avatar: user.Spec.AvatarURL,
-	}
-}
-
 // GitUserToUser performs type conversion from a GitUser to a Jenkins X user,
 // attaching the Git Provider account to Accounts
 func (r *GitUserResolver) GitUserToUser(gitUser *scm.User) *jenkinsv1.UserDetails {
@@ -147,16 +136,6 @@ func (r *GitUserResolver) GitUserToUser(gitUser *scm.User) *jenkinsv1.UserDetail
 		Name:  gitUser.Name,
 		Email: gitUser.Email,
 	}
-}
-
-// GitUserLogin returns the login for the git provider, or an empty string if not found
-func (r *GitUserResolver) GitUserLogin(user *jenkinsv1.User) string {
-	for _, a := range user.Spec.Accounts {
-		if a.Provider == r.GitProviderKey() {
-			return a.ID
-		}
-	}
-	return ""
 }
 
 // GitProviderKey returns the provider key for this GitUserResolver
