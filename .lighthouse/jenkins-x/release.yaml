@@ -23,8 +23,6 @@ spec:
             #!/usr/bin/env bash
             VERSION=$(jx-release-version)
             echo $VERSION > VERSION
-
-
         - image: gcr.io/jenkinsxio/jx-boot:3.0.773
           name: jx-variables
           resources: {}
@@ -92,7 +90,6 @@ spec:
             #!/bin/bash
             source .jx/variables.sh
             ./promote.sh
-
   podTemplate: {}
   serviceAccountName: tekton-bot
   timeout: 240h0m0s
