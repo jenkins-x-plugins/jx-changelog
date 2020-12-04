@@ -607,21 +607,31 @@ func (o *Options) updatePipelineActivity(fn func(activity *v1.PipelineActivity) 
 				},
 			},
 		}
-		a, _, err := key.GetOrCreate(o.JXClient, o.Namespace)
-		if err != nil {
-			return errors.Wrapf(err, "failed to get PipelineActivity")
-		}
 
-		updated, err := fn(a)
-		if err != nil {
-			return errors.Wrapf(err, "failed to update PipelineActivit %s", name)
-		}
-		if updated {
+		var lastErr error
+		for i := 0; i < 3; i++ {
+			a, _, err := key.GetOrCreate(o.JXClient, o.Namespace)
+			if err != nil {
+				return errors.Wrapf(err, "failed to get PipelineActivity")
+			}
+
+			updated, err := fn(a)
+			if err != nil {
+				return errors.Wrapf(err, "failed to update PipelineActivit %s", name)
+			}
+			if !updated {
+				return nil
+			}
 			a, err = acts.Update(ctx, a, metav1.UpdateOptions{})
 			if err != nil {
-				return errors.Wrapf(err, "failed to update PipelineActivity %s", name)
+				lastErr = err
+			} else {
+				log.Logger().Infof("Updated PipelineActivity %s which has status %s", name, string(a.Spec.Status))
+				return nil
 			}
-			log.Logger().Infof("Updated PipelineActivity %s which has status %s", name, string(a.Spec.Status))
+		}
+		if lastErr != nil {
+			log.Logger().Warnf("failed to update  PipelineActivity %s due to %s", name, lastErr.Error())
 		}
 	} else {
 		log.Logger().Warnf("No $BUILD_NUMBER so cannot update PipelineActivities with the details from the changelog")
