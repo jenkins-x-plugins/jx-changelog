@@ -181,6 +181,7 @@ func NewCmdChangelogCreate() (*cobra.Command, *Options) {
 			helper.CheckErr(err)
 		},
 	}
+	o.ScmFactory.DiscoverFromGit = true
 
 	cmd.Flags().StringVarP(&o.PreviousRevision, "previous-rev", "p", "", "the previous tag revision")
 	cmd.Flags().StringVarP(&o.PreviousDate, "previous-date", "", "", "the previous date to find a revision in format 'MonthName dayNumber year'")
@@ -826,7 +827,7 @@ func (o *Options) getTemplateResult(releaseSpec *v1.ReleaseSpec, templateName st
 			return "", err
 		}
 		templateText = string(data)
-	}
+	}                   	
 	if templateText == "" {
 		return "", nil
 	}

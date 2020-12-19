@@ -5,9 +5,9 @@ require (
 	github.com/antham/chyle v1.11.0
 	github.com/cpuguy83/go-md2man v1.0.10
 	github.com/ghodss/yaml v1.0.0
-	github.com/jenkins-x/go-scm v1.5.193
-	github.com/jenkins-x/jx-api/v4 v4.0.11
-	github.com/jenkins-x/jx-helpers/v3 v3.0.31
+	github.com/jenkins-x/go-scm v1.5.199
+	github.com/jenkins-x/jx-api/v4 v4.0.14
+	github.com/jenkins-x/jx-helpers/v3 v3.0.41
 	github.com/jenkins-x/jx-logging/v3 v3.0.2
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.0.0
