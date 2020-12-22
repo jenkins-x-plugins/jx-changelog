@@ -450,7 +450,7 @@ func (o *Options) Run() error {
 		// lets try find a release for the tag
 		rel, _, err := scmClient.Releases.FindByTag(ctx, fullName, tagName)
 
-		if scmhelpers.IsScmNotFound(err) {
+		if isReleaseNotFound(err, o.ScmFactory.GitKind) {
 			err = nil
 			rel = nil
 		}
@@ -465,7 +465,11 @@ func (o *Options) Run() error {
 				return nil
 			}
 		} else {
-			rel, _, err = scmClient.Releases.Update(ctx, fullName, rel.ID, releaseInfo)
+			if rel.ID != 0 {
+				rel, _, err = scmClient.Releases.Update(ctx, fullName, rel.ID, releaseInfo)
+			} else {
+				rel, _, err = scmClient.Releases.UpdateByTag(ctx, fullName, rel.Tag, releaseInfo)
+			}
 			if err != nil {
 				id := -1
 				if rel != nil {
@@ -827,7 +831,7 @@ func (o *Options) getTemplateResult(releaseSpec *v1.ReleaseSpec, templateName st
 			return "", err
 		}
 		templateText = string(data)
-	}                   	
+	}
 	if templateText == "" {
 		return "", nil
 	}
@@ -891,4 +895,15 @@ func CollapseDependencyUpdates(dependencyUpdates []v1.DependencyUpdate) []v1.Dep
 		}
 	}
 	return collapsed
+}
+
+func isReleaseNotFound(err error, gitKind string) bool {
+	if gitKind == "gitlab" {
+		if err == nil {
+			return false
+		}
+		return strings.Contains(err.Error(), scm.ErrForbidden.Error())
+	} else {
+		return scmhelpers.IsScmNotFound(err)
+	}
 }
