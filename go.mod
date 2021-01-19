@@ -4,7 +4,7 @@ require (
 	github.com/andygrunwald/go-jira v1.13.0
 	github.com/antham/chyle v1.11.0
 	github.com/ghodss/yaml v1.0.0
-	github.com/jenkins-x/go-scm v1.5.214
+	github.com/jenkins-x/go-scm v1.5.215
 	github.com/jenkins-x/jx-api/v4 v4.0.23
 	github.com/jenkins-x/jx-helpers/v3 v3.0.63
 	github.com/jenkins-x/jx-logging/v3 v3.0.3
