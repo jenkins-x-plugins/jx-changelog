@@ -79,6 +79,7 @@ type Options struct {
 	OverwriteCRD        bool
 	GenerateCRD         bool
 	GenerateReleaseYaml bool
+	ConditionalRelease  bool
 	UpdateRelease       bool
 	NoReleaseInDev      bool
 	IncludeMergeCommits bool
@@ -165,6 +166,11 @@ e.g. define environment variables GIT_USERNAME and GIT_API_TOKEN
 
 	GitHubIssueRegex = regexp.MustCompile(`(\#\d+)`)
 	JIRAIssueRegex   = regexp.MustCompile(`[A-Z][A-Z]+-(\d+)`)
+
+	conditionalReleaseYAML = `{{- if .Capabilities.APIVersions.Has "jenkins.io/v1/Release" }}
+%s 
+{{- end }}
+`
 )
 
 // NewCmdChangelogCreate creates the command and options
@@ -195,6 +201,7 @@ func NewCmdChangelogCreate() (*cobra.Command, *Options) {
 	cmd.Flags().BoolVarP(&o.OverwriteCRD, "overwrite", "o", false, "overwrites the Release CRD YAML file if it exists")
 	cmd.Flags().BoolVarP(&o.GenerateCRD, "crd", "c", false, "Generate the CRD in the chart")
 	cmd.Flags().BoolVarP(&o.GenerateReleaseYaml, "generate-yaml", "y", true, "Generate the Release YAML in the local helm chart")
+	cmd.Flags().BoolVarP(&o.ConditionalRelease, "conditional-release", "", true, "Wrap the Release YAML in the helm Capabilities.APIVersions.Has if statement")
 	cmd.Flags().BoolVarP(&o.UpdateRelease, "update-release", "", true, "Should we update the release on the Git repository with the changelog")
 	cmd.Flags().BoolVarP(&o.NoReleaseInDev, "no-dev-release", "", false, "Disables the generation of Release CRDs in the development namespace to track releases being performed")
 	cmd.Flags().BoolVarP(&o.IncludeMergeCommits, "include-merge-commits", "", false, "Include merge commits when generating the changelog")
@@ -504,6 +511,9 @@ func (o *Options) Run() error {
 	o.State.Release = release
 	// now lets marshal the release YAML
 	data, err := yaml.Marshal(release)
+	if o.ConditionalRelease {
+		data = []byte(fmt.Sprintf(conditionalReleaseYAML, string(data)))
+	}
 
 	if err != nil {
 		return errors.Wrap(err, "failed to unmarshal Release")
