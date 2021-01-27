@@ -292,12 +292,19 @@ func (o *Options) Run() error {
 		if err != nil {
 			return errors.Wrap(err, "could not find helm chart")
 		}
-		path, _ := filepath.Split(chartFile)
-		templatesDir = filepath.Join(path, "templates")
+		if chartFile == "" {
+			log.Logger().Infof("no chart directory found in %s", dir)
+			templatesDir = ""
+		} else {
+			path, _ := filepath.Split(chartFile)
+			templatesDir = filepath.Join(path, "templates")
+		}
 	}
-	err = os.MkdirAll(templatesDir, files.DefaultDirWritePermissions)
-	if err != nil {
-		return errors.Wrapf(err, "failed to create the templates directory %s", templatesDir)
+	if templatesDir != "" {
+		err = os.MkdirAll(templatesDir, files.DefaultDirWritePermissions)
+		if err != nil {
+			return errors.Wrapf(err, "failed to create the templates directory %s", templatesDir)
+		}
 	}
 
 	log.Logger().Infof("Generating change log from git ref %s => %s", info(previousRev), info(currentRev))
@@ -521,32 +528,36 @@ func (o *Options) Run() error {
 	if data == nil {
 		return fmt.Errorf("could not marshal release to yaml")
 	}
-	releaseFile := filepath.Join(templatesDir, o.ReleaseYamlFile)
-	crdFile := filepath.Join(templatesDir, o.CrdYamlFile)
-	if o.GenerateReleaseYaml {
-		err = ioutil.WriteFile(releaseFile, data, files.DefaultFileWritePermissions)
-		if err != nil {
-			return errors.Wrapf(err, "failed to save Release YAML file %s", releaseFile)
-		}
-		log.Logger().Infof("generated: %s", info(releaseFile))
-	}
-	cleanVersion := strings.TrimPrefix(version, "v")
-	release.Spec.Version = cleanVersion
-	if o.GenerateCRD {
-		exists, err := files.FileExists(crdFile)
-		if err != nil {
-			return errors.Wrapf(err, "failed to check for CRD YAML file %s", crdFile)
-		}
-		if o.OverwriteCRD || !exists {
-			err = ioutil.WriteFile(crdFile, []byte(ReleaseCrdYaml), files.DefaultFileWritePermissions)
-			if err != nil {
-				return errors.Wrapf(err, "failed to save Release CRD YAML file %s", crdFile)
-			}
-			log.Logger().Infof("generated: %s", info(crdFile))
 
-			err = gitclient.Add(o.Git(), templatesDir)
+	cleanVersion := ""
+	if templatesDir != "" {
+		releaseFile := filepath.Join(templatesDir, o.ReleaseYamlFile)
+		crdFile := filepath.Join(templatesDir, o.CrdYamlFile)
+		if o.GenerateReleaseYaml {
+			err = ioutil.WriteFile(releaseFile, data, files.DefaultFileWritePermissions)
 			if err != nil {
-				return errors.Wrapf(err, "failed to git add in dir %s", templatesDir)
+				return errors.Wrapf(err, "failed to save Release YAML file %s", releaseFile)
+			}
+			log.Logger().Infof("generated: %s", info(releaseFile))
+		}
+		cleanVersion = strings.TrimPrefix(version, "v")
+		release.Spec.Version = cleanVersion
+		if o.GenerateCRD {
+			exists, err := files.FileExists(crdFile)
+			if err != nil {
+				return errors.Wrapf(err, "failed to check for CRD YAML file %s", crdFile)
+			}
+			if o.OverwriteCRD || !exists {
+				err = ioutil.WriteFile(crdFile, []byte(ReleaseCrdYaml), files.DefaultFileWritePermissions)
+				if err != nil {
+					return errors.Wrapf(err, "failed to save Release CRD YAML file %s", crdFile)
+				}
+				log.Logger().Infof("generated: %s", info(crdFile))
+
+				err = gitclient.Add(o.Git(), templatesDir)
+				if err != nil {
+					return errors.Wrapf(err, "failed to git add in dir %s", templatesDir)
+				}
 			}
 		}
 	}
