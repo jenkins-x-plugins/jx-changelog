@@ -297,7 +297,12 @@ func (o *Options) Run() error {
 			templatesDir = ""
 		} else {
 			path, _ := filepath.Split(chartFile)
-			templatesDir = filepath.Join(path, "templates")
+			if path == "" {
+				log.Logger().Infof("no chart directory found in %s", dir)
+				templatesDir = ""
+			} else {
+				templatesDir = filepath.Join(path, "templates")
+			}
 		}
 	}
 	if templatesDir != "" {
