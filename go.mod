@@ -28,4 +28,10 @@ require (
 	k8s.io/utils v0.0.0-20210111153108-fddb29f9d009 // indirect
 )
 
+replace (
+	k8s.io/api => k8s.io/api v0.20.2
+	k8s.io/apimachinery => k8s.io/apimachinery v0.20.2
+	k8s.io/client-go => k8s.io/client-go v0.20.2
+)
+
 go 1.15
