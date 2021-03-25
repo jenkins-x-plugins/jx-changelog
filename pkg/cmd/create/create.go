@@ -84,6 +84,8 @@ type Options struct {
 	NoReleaseInDev      bool
 	IncludeMergeCommits bool
 	FailIfFindCommits   bool
+	Draft               bool
+	Prerelease          bool
 	State               State
 }
 
@@ -206,6 +208,8 @@ func NewCmdChangelogCreate() (*cobra.Command, *Options) {
 	cmd.Flags().BoolVarP(&o.NoReleaseInDev, "no-dev-release", "", false, "Disables the generation of Release CRDs in the development namespace to track releases being performed")
 	cmd.Flags().BoolVarP(&o.IncludeMergeCommits, "include-merge-commits", "", false, "Include merge commits when generating the changelog")
 	cmd.Flags().BoolVarP(&o.FailIfFindCommits, "fail-if-no-commits", "", false, "Do we want to fail the build if we don't find any commits to generate the changelog")
+	cmd.Flags().BoolVarP(&o.Draft, "draft", "", false, "The git provider release is marked as draft")
+	cmd.Flags().BoolVarP(&o.Prerelease, "prerelease", "", false, "The git provider release is marked as a pre-release")
 
 	cmd.Flags().StringVarP(&o.Header, "header", "", "", "The changelog header in markdown for the changelog. Can use go template expressions on the ReleaseSpec object: https://golang.org/pkg/text/template/")
 	cmd.Flags().StringVarP(&o.HeaderFile, "header-file", "", "", "The file name of the changelog header in markdown for the changelog. Can use go template expressions on the ReleaseSpec object: https://golang.org/pkg/text/template/")
@@ -461,6 +465,8 @@ func (o *Options) Run() error {
 			Title:       version,
 			Tag:         tagName,
 			Description: markdown,
+			Draft:       o.Draft,
+			Prerelease:  o.Prerelease,
 		}
 
 		ctx := context.Background()
