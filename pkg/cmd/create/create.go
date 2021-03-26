@@ -169,7 +169,7 @@ e.g. define environment variables GIT_USERNAME and GIT_API_TOKEN
 	GitHubIssueRegex = regexp.MustCompile(`(\#\d+)`)
 	JIRAIssueRegex   = regexp.MustCompile(`[A-Z][A-Z]+-(\d+)`)
 
-	conditionalReleaseYAML = `{{- if .Capabilities.APIVersions.Has "jenkins.io/v1/Release" }}
+	conditionalReleaseYAML = `{{- if and (.Capabilities.APIVersions.Has "jenkins.io/v1/Release") (hasKey .Values.jx "releaseCRD") (.Values.jx.releaseCRD)}}
 %s 
 {{- end }}
 `
