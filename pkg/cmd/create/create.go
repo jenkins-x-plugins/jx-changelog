@@ -202,7 +202,7 @@ func NewCmdChangelogCreate() (*cobra.Command, *Options) {
 	cmd.Flags().StringVarP(&o.OutputMarkdownFile, "output-markdown", "", "", "The file to generate for the changelog output if not updating a Git provider release")
 	cmd.Flags().BoolVarP(&o.OverwriteCRD, "overwrite", "o", false, "overwrites the Release CRD YAML file if it exists")
 	cmd.Flags().BoolVarP(&o.GenerateCRD, "crd", "c", false, "Generate the CRD in the chart")
-	cmd.Flags().BoolVarP(&o.GenerateReleaseYaml, "generate-yaml", "y", true, "Generate the Release YAML in the local helm chart")
+	cmd.Flags().BoolVarP(&o.GenerateReleaseYaml, "generate-yaml", "y", false, "Generate the Release YAML in the local helm chart")
 	cmd.Flags().BoolVarP(&o.ConditionalRelease, "conditional-release", "", true, "Wrap the Release YAML in the helm Capabilities.APIVersions.Has if statement")
 	cmd.Flags().BoolVarP(&o.UpdateRelease, "update-release", "", true, "Should we update the release on the Git repository with the changelog")
 	cmd.Flags().BoolVarP(&o.NoReleaseInDev, "no-dev-release", "", false, "Disables the generation of Release CRDs in the development namespace to track releases being performed")
