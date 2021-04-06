@@ -473,48 +473,52 @@ func (o *Options) Run() error {
 		fullName := scm.Join(o.ScmFactory.Owner, o.ScmFactory.Repository)
 
 		// lets try find a release for the tag
-		rel, _, err := scmClient.Releases.FindByTag(ctx, fullName, tagName)
-
-		if isReleaseNotFound(err, o.ScmFactory.GitKind) {
-			err = nil
-			rel = nil
-		}
-		if err != nil {
-			return errors.Wrapf(err, "failed to query release on repo %s for tag %s", fullName, tagName)
-		}
-
-		if rel == nil {
-			rel, _, err = scmClient.Releases.Create(ctx, fullName, releaseInfo)
-			if err != nil {
-				log.Logger().Warnf("Failed to create the release for %s: %s", fullName, err)
-				return nil
-			}
+		if scmClient.Releases == nil {
+			log.Logger().Warnf("scm provider does not support Releases so cannot find releases")
 		} else {
-			if rel.ID != 0 {
-				rel, _, err = scmClient.Releases.Update(ctx, fullName, rel.ID, releaseInfo)
-			} else {
-				rel, _, err = scmClient.Releases.UpdateByTag(ctx, fullName, rel.Tag, releaseInfo)
+			rel, _, err := scmClient.Releases.FindByTag(ctx, fullName, tagName)
+
+			if isReleaseNotFound(err, o.ScmFactory.GitKind) {
+				err = nil
+				rel = nil
 			}
 			if err != nil {
-				id := -1
-				if rel != nil {
-					id = rel.ID
-				}
-				log.Logger().Warnf("Failed to update the release for %s number: %d: %s", fullName, id, err)
-				return nil
+				return errors.Wrapf(err, "failed to query release on repo %s for tag %s", fullName, tagName)
 			}
-		}
 
-		url := ""
-		if rel != nil {
-			url = rel.Link
+			if rel == nil {
+				rel, _, err = scmClient.Releases.Create(ctx, fullName, releaseInfo)
+				if err != nil {
+					log.Logger().Warnf("Failed to create the release for %s: %s", fullName, err)
+					return nil
+				}
+			} else {
+				if rel.ID != 0 {
+					rel, _, err = scmClient.Releases.Update(ctx, fullName, rel.ID, releaseInfo)
+				} else {
+					rel, _, err = scmClient.Releases.UpdateByTag(ctx, fullName, rel.Tag, releaseInfo)
+				}
+				if err != nil {
+					id := -1
+					if rel != nil {
+						id = rel.ID
+					}
+					log.Logger().Warnf("Failed to update the release for %s number: %d: %s", fullName, id, err)
+					return nil
+				}
+			}
+
+			url := ""
+			if rel != nil {
+				url = rel.Link
+			}
+			if url == "" {
+				url = stringhelpers.UrlJoin(gitInfo.HttpsURL(), "releases/tag", tagName)
+			}
+			release.Spec.ReleaseNotesURL = url
+			log.Logger().Infof("updated the release information at %s", info(url))
+			log.Logger().Debugf("added description: %s", markdown)
 		}
-		if url == "" {
-			url = stringhelpers.UrlJoin(gitInfo.HttpsURL(), "releases/tag", tagName)
-		}
-		release.Spec.ReleaseNotesURL = url
-		log.Logger().Infof("updated the release information at %s", info(url))
-		log.Logger().Debugf("added description: %s", markdown)
 	} else if o.OutputMarkdownFile != "" {
 		err := ioutil.WriteFile(o.OutputMarkdownFile, []byte(markdown), files.DefaultFileWritePermissions)
 		if err != nil {
