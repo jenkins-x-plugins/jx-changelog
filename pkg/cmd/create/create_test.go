@@ -45,7 +45,7 @@ func TestCreateChangelog(t *testing.T) {
 	o.ScmFactory.Repository = repo
 	o.BuildNumber = "1"
 	o.Version = "2.0.1"
-
+	o.GenerateReleaseYaml = true
 	err = o.Run()
 	require.NoError(t, err, "could not run changelog")
 
