@@ -70,6 +70,10 @@ e.g. define environment variables GIT\_USERNAME and GIT\_API\_TOKEN
     the directory to search for the .git to discover the git source URL
 
 .PP
+\fB\-\-draft\fP[=false]
+    The git provider release is marked as draft
+
+.PP
 \fB\-\-fail\-if\-no\-commits\fP[=false]
     Do we want to fail the build if we don't find any commits to generate the changelog
 
@@ -84,7 +88,7 @@ e.g. define environment variables GIT\_USERNAME and GIT\_API\_TOKEN
 \[la]https://golang.org/pkg/text/template/\[ra]
 
 .PP
-\fB\-y\fP, \fB\-\-generate\-yaml\fP[=true]
+\fB\-y\fP, \fB\-\-generate\-yaml\fP[=false]
     Generate the Release YAML in the local helm chart
 
 .PP
@@ -132,6 +136,10 @@ e.g. define environment variables GIT\_USERNAME and GIT\_API\_TOKEN
 .PP
 \fB\-o\fP, \fB\-\-overwrite\fP[=false]
     overwrites the Release CRD YAML file if it exists
+
+.PP
+\fB\-\-prerelease\fP[=false]
+    The git provider release is marked as a pre\-release
 
 .PP
 \fB\-\-previous\-date\fP=""
