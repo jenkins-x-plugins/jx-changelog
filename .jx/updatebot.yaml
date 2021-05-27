@@ -6,6 +6,6 @@ spec:
         - https://github.com/jenkins-x/jx3-pipeline-catalog
       changes:
         - regex:
-            pattern: "jenkinsxio/jx-changelog:(.*)"
+            pattern: "jenkins-x/jx-changelog:(.*)"
             files:
               - "**/*.yaml"
