@@ -8,7 +8,6 @@
 
 `jx-changelog` is a small command line tool for generating release Changelog files
 
-
 ## Debug
 To debug jx changelog inside a Running container:
 First modify you pipeline by editing `release.yaml`  in your project,
@@ -46,5 +45,5 @@ Do not forget to `make build` and `kubectl cp` after each change
 
 ## Commands
 
-See the [jx-changelog command reference](https://github.com/jenkins-x-plugins/jx-changelog/blob/master/docs/cmd/jx-changelog.md)
+See the [jx-changelog command reference](https://jenkins-x.io/v3/develop/reference/jx/changelog/)
 
