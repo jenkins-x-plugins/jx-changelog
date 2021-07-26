@@ -934,12 +934,5 @@ func CollapseDependencyUpdates(dependencyUpdates []v1.DependencyUpdate) []v1.Dep
 }
 
 func isReleaseNotFound(err error, gitKind string) bool {
-	if gitKind == "gitlab" {
-		if err == nil {
-			return false
-		}
-		return strings.Contains(err.Error(), scm.ErrForbidden.Error())
-	} else {
-		return scmhelpers.IsScmNotFound(err)
-	}
+	return scmhelpers.IsScmNotFound(err)
 }
