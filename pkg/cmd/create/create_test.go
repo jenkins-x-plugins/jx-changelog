@@ -2,11 +2,12 @@ package create_test
 
 import (
 	"context"
-	"github.com/ghodss/yaml"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/ghodss/yaml"
 
 	"github.com/jenkins-x-plugins/jx-changelog/pkg/cmd/create"
 	"github.com/jenkins-x/go-scm/scm"

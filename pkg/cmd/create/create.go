@@ -199,7 +199,7 @@ func NewCmdChangelogCreate() (*cobra.Command, *Options) {
 	cmd.Flags().StringVarP(&o.CrdYamlFile, "crd-yaml-file", "", "release-crd.yaml", "the name of the file to generate the Release CustomResourceDefinition YAML")
 	cmd.Flags().StringVarP(&o.Version, "version", "v", "", "The version to release")
 	cmd.Flags().StringVarP(&o.Build, "build", "", "", "The Build number which is used to update the PipelineActivity. If not specified its defaulted from  the '$BUILD_NUMBER' environment variable")
-	cmd.Flags().StringVarP(&o.OutputMarkdownFile, "output-markdown", "", "", "The file to generate for the changelog output if not updating a Git provider release")
+	cmd.Flags().StringVarP(&o.OutputMarkdownFile, "output-markdown", "", "", "Put the changelog output in this file")
 	cmd.Flags().BoolVarP(&o.OverwriteCRD, "overwrite", "o", false, "overwrites the Release CRD YAML file if it exists")
 	cmd.Flags().BoolVarP(&o.GenerateCRD, "crd", "c", false, "Generate the CRD in the chart")
 	cmd.Flags().BoolVarP(&o.GenerateReleaseYaml, "generate-yaml", "y", false, "Generate the Release YAML in the local helm chart")
@@ -429,7 +429,7 @@ func (o *Options) Run() error {
 		return err
 	}
 	markdown = header + markdown + footer
-
+	markdownOutputted := false
 	log.Logger().Debugf("Generated release notes:\n\n%s\n", markdown)
 
 	if version != "" && o.UpdateRelease {
@@ -518,14 +518,19 @@ func (o *Options) Run() error {
 			release.Spec.ReleaseNotesURL = url
 			log.Logger().Infof("updated the release information at %s", info(url))
 			log.Logger().Debugf("added description: %s", markdown)
+			markdownOutputted = true
 		}
-	} else if o.OutputMarkdownFile != "" {
+	}
+
+	if o.OutputMarkdownFile != "" {
 		err := ioutil.WriteFile(o.OutputMarkdownFile, []byte(markdown), files.DefaultFileWritePermissions)
 		if err != nil {
 			return err
 		}
 		log.Logger().Infof("\nGenerated Changelog: %s", info(o.OutputMarkdownFile))
-	} else {
+		markdownOutputted = true
+	}
+	if !markdownOutputted {
 		log.Logger().Infof("\nGenerated Changelog:")
 		log.Logger().Infof("%s\n", markdown)
 	}
