@@ -14,11 +14,14 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/imdario/mergo"
 	"github.com/jenkins-x-plugins/jx-changelog/pkg/gits"
 	"github.com/jenkins-x-plugins/jx-changelog/pkg/helmhelpers"
 	"github.com/jenkins-x-plugins/jx-changelog/pkg/issues"
 	"github.com/jenkins-x-plugins/jx-changelog/pkg/users"
+	"github.com/jenkins-x-plugins/jx-gitops/pkg/variablefinders"
 	"github.com/jenkins-x/go-scm/scm"
+	jxcore "github.com/jenkins-x/jx-api/v4/pkg/apis/core/v4beta1"
 	jxc "github.com/jenkins-x/jx-api/v4/pkg/client/clientset/versioned"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/builds"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/cmdrunner"
@@ -128,7 +131,9 @@ spec:
 var (
 	info = termcolor.ColorInfo
 
-	GitAccessDescription = `
+	AccessDescription = `
+
+Jira API token is taken from the environment variable JIRA_API_TOKEN. Can be populated using the jx-boot-job-env-vars secret.
 
 By default jx commands look for a file '~/.jx/gitAuth.yaml' to find the API tokens for Git servers. You can use 'jx create git token' to create a Git token.
 
@@ -139,7 +144,7 @@ e.g. define environment variables GIT_USERNAME and GIT_API_TOKEN
 	cmdLong = templates.LongDesc(`
 		Creates a Changelog for the latest tag
 
-		This command will generate a Changelog as markdown for the git commit range given. 
+		This command will generate a Changelog as markdown for the git commit range given.
 		If you are using GitHub it will also update the GitHub Release with the changelog. You can disable that by passing'--update-release=false'
 
 		If you have just created a git tag this command will try default to the changes between the last tag and the previous one. You can always specify the exact Git references (tag/sha) directly via '--previous-rev' and '--rev'
@@ -152,7 +157,13 @@ e.g. define environment variables GIT_USERNAME and GIT_API_TOKEN
 		
 		To update the release notes on your git provider needs a git API token which is usually provided via the Tekton git authentication mechanism.
 
-`) + GitAccessDescription
+		Apart from using your git provider as the issue tracker there is also support for Jira. You then specify issues in commit messages with the issue key that looks like ABC-123. You can configure this in in similar ways as environments, see https://jenkins-x.io/v3/develop/environments/config/. An example configuration:
+
+			issueProvider:
+			  jira:
+				serverUrl: https://example.atlassian.net
+				userName: user@example.com
+`) + AccessDescription
 
 	cmdExample = templates.Examples(`
 		# generate a changelog on the current source
@@ -166,8 +177,8 @@ e.g. define environment variables GIT_USERNAME and GIT_API_TOKEN
 
 `)
 
-	GitHubIssueRegex = regexp.MustCompile(`(\#\d+)`)
-	JIRAIssueRegex   = regexp.MustCompile(`[A-Z][A-Z]+-(\d+)`)
+	GitHubIssueRegex = regexp.MustCompile(`\B#\d+\b`)
+	JIRAIssueRegex   = regexp.MustCompile(`\b[A-Z][A-Z0-9_]+-\d+\b`)
 
 	conditionalReleaseYAML = `{{- if and (.Capabilities.APIVersions.Has "jenkins.io/v1/Release") (hasKey .Values.jx "releaseCRD") (.Values.jx.releaseCRD)}}
 %s 
@@ -623,6 +634,35 @@ func (o *Options) Run() error {
 	return nil
 }
 
+// FindIssueTracker finds the issue tracker from the settings in current repo as well as sourcerepositories and
+// requirements from cluster repo
+func FindIssueTracker(g gitclient.Interface, jxClient jxc.Interface, ns string, dir, owner, repo string) (*jxcore.IssueTracker, error) {
+	// now lets merge the local requirements with the dev environment so that we can locally override things
+	// while inheriting common stuff
+	settings, clusterDir, err := variablefinders.GetSettings(g, jxClient, ns, dir, owner, repo)
+	if err != nil {
+		return nil, err
+	}
+
+	requirementsConfig, _, err := jxcore.LoadRequirementsConfig(clusterDir, false)
+	var reqIssueTracker *jxcore.IssueTracker
+	if err == nil && &requirementsConfig.Spec != nil {
+		reqIssueTracker = requirementsConfig.Spec.Cluster.IssueTracker
+	}
+
+	issueTracker := settings.Spec.IssueTracker
+	if reqIssueTracker != nil {
+		if issueTracker != nil {
+			err = mergo.Merge(reqIssueTracker, issueTracker, mergo.WithOverride)
+			if err != nil {
+				return nil, errors.Wrap(err, "error merging requirements.spec.cluster Destination from settings")
+			}
+		}
+		return reqIssueTracker, nil
+	}
+	return issueTracker, nil
+}
+
 func (o *Options) updatePipelineActivity(fn func(activity *v1.PipelineActivity) (bool, error)) error {
 	if o.BuildNumber == "" {
 		o.BuildNumber = os.Getenv("BUILD_NUMBER")
@@ -687,12 +727,19 @@ func (o *Options) updatePipelineActivity(fn func(activity *v1.PipelineActivity) 
 
 // CreateIssueProvider creates the issue provider
 func (o *Options) CreateIssueProvider() (issues.IssueProvider, error) {
+	issueTracker, _ := FindIssueTracker(o.Git(), o.JXClient, "", o.ScmFactory.Dir, o.ScmFactory.Owner, o.ScmFactory.Repository)
+	if issueTracker != nil && issueTracker.Jira != nil {
+		j := issueTracker.Jira
+		jiraApiToken := os.Getenv("JIRA_API_TOKEN")
+		if jiraApiToken != "" {
+			return issues.CreateJiraIssueProvider(j.ServerURL, j.Username, jiraApiToken, j.Project, true)
+		} else {
+			log.Logger().Warnf("Environment variable JIRA_API_TOKEN can't be found so connection to JIRA can't be made")
+		}
+	}
+	log.Logger().Infof("Can't find any issue tracker setting; defaulting to git provider: %s",
+		o.ScmFactory.ScmClient.Driver.String())
 	return issues.CreateGitIssueProvider(o.ScmFactory.ScmClient, o.ScmFactory.Owner, o.ScmFactory.Repository)
-	/*
-		// TODO find kind from a configuration file inside the repository....
-		kind := ""
-		return issues.CreateIssueProvider(kind, serverURL, username, apiToken, project, o.BatchMode)
-	*/
 }
 
 func (o *Options) Git() gitclient.Interface {
@@ -940,9 +987,9 @@ func CollapseDependencyUpdates(dependencyUpdates []v1.DependencyUpdate) []v1.Dep
 
 func isReleaseNotFound(err error, gitKind string) bool {
 	switch gitKind {
-		case "gitlab":
-			return strings.Contains(err.Error(), "Forbidden") || scmhelpers.IsScmNotFound(err)
-		default:
-			return scmhelpers.IsScmNotFound(err)
+	case "gitlab":
+		return strings.Contains(err.Error(), "Forbidden") || scmhelpers.IsScmNotFound(err)
+	default:
+		return scmhelpers.IsScmNotFound(err)
 	}
 }
