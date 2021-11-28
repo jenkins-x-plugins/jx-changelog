@@ -154,7 +154,7 @@ e.g. define environment variables GIT_USERNAME and GIT_API_TOKEN
 		This command also generates a Release Custom Resource Definition you can include in your helm chart to give metadata about the changelog of the application along with metadata about the release (git tag, url, commits, issues fixed etc). Including this metadata in a helm charts means we can do things like automatically comment on issues when they hit Staging or Production; or give detailed descriptions of what things have changed when using GitOps to update versions in an environment by referencing the fixed issues in the Pull Request.
 
 		You can opt out of the release YAML generation via the '--generate-yaml=false' option
-		
+
 		To update the release notes on your git provider needs a git API token which is usually provided via the Tekton git authentication mechanism.
 
 		Apart from using your git provider as the issue tracker there is also support for Jira. You then specify issues in commit messages with the issue key that looks like ABC-123. You can configure this in in similar ways as environments, see https://jenkins-x.io/v3/develop/environments/config/. An example configuration:
@@ -372,7 +372,8 @@ func (o *Options) Run() error {
 		}
 		log.Logger().Debugf("Found commits:")
 		if commits != nil {
-			for _, commit := range *commits {
+			for k := range *commits {
+				commit := (*commits)[k]
 				log.Logger().Debugf("  commit %s", commit.Hash)
 				log.Logger().Debugf("  Author: %s <%s>", commit.Author.Name, commit.Author.Email)
 				log.Logger().Debugf("  Date: %s", commit.Committer.When.Format(time.ANSIC))
@@ -395,7 +396,7 @@ func (o *Options) Run() error {
 			CreationTimestamp: metav1.Time{
 				Time: time.Now(),
 			},
-			//ResourceVersion:   "1",
+			// ResourceVersion:   "1",
 			DeletionTimestamp: &metav1.Time{},
 		},
 		Spec: v1.ReleaseSpec{
@@ -416,9 +417,9 @@ func (o *Options) Run() error {
 		GitProvider: scmClient,
 	}
 	if commits != nil {
-		for _, commit := range *commits {
-			c := commit
-			if o.IncludeMergeCommits || len(commit.ParentHashes) <= 1 {
+		for k := range *commits {
+			c := (*commits)[k]
+			if o.IncludeMergeCommits || len(c.ParentHashes) <= 1 {
 				o.addCommit(&release.Spec, &c, &resolver)
 			}
 		}
@@ -592,16 +593,6 @@ func (o *Options) Run() error {
 			}
 		}
 	}
-	appName := ""
-	if gitInfo != nil {
-		appName = gitInfo.Name
-	}
-	if appName == "" {
-		appName = release.Spec.Name
-	}
-	if appName == "" {
-		appName = release.Spec.GitRepository
-	}
 	releaseNotesURL := release.Spec.ReleaseNotesURL
 
 	// lets modify the PipelineActivity
@@ -636,7 +627,7 @@ func (o *Options) Run() error {
 
 // FindIssueTracker finds the issue tracker from the settings in current repo as well as sourcerepositories and
 // requirements from cluster repo
-func FindIssueTracker(g gitclient.Interface, jxClient jxc.Interface, ns string, dir, owner, repo string) (*jxcore.IssueTracker, error) {
+func FindIssueTracker(g gitclient.Interface, jxClient jxc.Interface, ns, dir, owner, repo string) (*jxcore.IssueTracker, error) {
 	// now lets merge the local requirements with the dev environment so that we can locally override things
 	// while inheriting common stuff
 	settings, clusterDir, err := variablefinders.GetSettings(g, jxClient, ns, dir, owner, repo)
@@ -646,7 +637,10 @@ func FindIssueTracker(g gitclient.Interface, jxClient jxc.Interface, ns string, 
 
 	requirementsConfig, _, err := jxcore.LoadRequirementsConfig(clusterDir, false)
 	var reqIssueTracker *jxcore.IssueTracker
-	if err == nil && &requirementsConfig.Spec != nil {
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot load requirements config file")
+	}
+	if requirementsConfig != nil && requirementsConfig.Spec.IsEmpty() {
 		reqIssueTracker = requirementsConfig.Spec.Cluster.IssueTracker
 	}
 
@@ -730,12 +724,12 @@ func (o *Options) CreateIssueProvider() (issues.IssueProvider, error) {
 	issueTracker, _ := FindIssueTracker(o.Git(), o.JXClient, "", o.ScmFactory.Dir, o.ScmFactory.Owner, o.ScmFactory.Repository)
 	if issueTracker != nil && issueTracker.Jira != nil {
 		j := issueTracker.Jira
-		jiraApiToken := os.Getenv("JIRA_API_TOKEN")
-		if jiraApiToken != "" {
-			return issues.CreateJiraIssueProvider(j.ServerURL, j.Username, jiraApiToken, j.Project, true)
-		} else {
-			log.Logger().Warnf("Environment variable JIRA_API_TOKEN can't be found so connection to JIRA can't be made")
+		jiraAPIToken := os.Getenv("JIRA_API_TOKEN")
+		if jiraAPIToken != "" {
+			return issues.CreateJiraIssueProvider(j.ServerURL, j.Username, jiraAPIToken, j.Project, true)
 		}
+		log.Logger().Warnf("Environment variable JIRA_API_TOKEN can't be found so connection to JIRA can't be made")
+
 	}
 	log.Logger().Infof("Can't find any issue tracker setting; defaulting to git provider: %s",
 		o.ScmFactory.ScmClient.Driver.String())
@@ -778,15 +772,11 @@ func (o *Options) addCommit(spec *v1.ReleaseSpec, commit *object.Commit, resolve
 		Committer: committer,
 	}
 
-	err = o.addIssuesAndPullRequests(spec, &commitSummary, commit)
-	if err != nil {
-		log.Logger().Warnf("Failed to enrich commit %s with issues: %s", sha, err)
-	}
+	o.addIssuesAndPullRequests(spec, &commitSummary, commit)
 	spec.Commits = append(spec.Commits, commitSummary)
-
 }
 
-func (o *Options) addIssuesAndPullRequests(spec *v1.ReleaseSpec, commit *v1.CommitSummary, rawCommit *object.Commit) error {
+func (o *Options) addIssuesAndPullRequests(spec *v1.ReleaseSpec, commit *v1.CommitSummary, rawCommit *object.Commit) {
 	tracker := o.State.Tracker
 
 	regex := GitHubIssueRegex
@@ -873,7 +863,6 @@ func (o *Options) addIssuesAndPullRequests(spec *v1.ReleaseSpec, commit *v1.Comm
 			}
 		}
 	}
-	return nil
 }
 
 // toV1Labels converts git labels to IssueLabel
@@ -890,7 +879,7 @@ func toV1Labels(labels []string) []v1.IssueLabel {
 // fullCommitMessageText returns the commit message
 func fullCommitMessageText(commit *object.Commit) string {
 	answer := commit.Message
-	fn := func(parent *object.Commit) error {
+	fn := func(parent *object.Commit) {
 		text := parent.Message
 		if text != "" {
 			sep := "\n"
@@ -899,17 +888,12 @@ func fullCommitMessageText(commit *object.Commit) string {
 			}
 			answer += sep + text
 		}
-		return nil
 	}
-	err := fn(commit) //nolint:errcheck
-	if err != nil {
-		log.Logger().Warnf("failed to create commit message %s", err.Error())
-	}
+	fn(commit)
 	return answer
-
 }
 
-func (o *Options) getTemplateResult(releaseSpec *v1.ReleaseSpec, templateName string, templateText string, templateFile string) (string, error) {
+func (o *Options) getTemplateResult(releaseSpec *v1.ReleaseSpec, templateName, templateText, templateFile string) (string, error) {
 	if templateText == "" {
 		if templateFile == "" {
 			return "", nil
@@ -934,7 +918,7 @@ func (o *Options) getTemplateResult(releaseSpec *v1.ReleaseSpec, templateName st
 	return buffer.String(), err
 }
 
-//CollapseDependencyUpdates takes a raw set of dependencyUpdates, removes duplicates and collapses multiple updates to
+// CollapseDependencyUpdates takes a raw set of dependencyUpdates, removes duplicates and collapses multiple updates to
 // the same org/repo:components into a sungle update
 func CollapseDependencyUpdates(dependencyUpdates []v1.DependencyUpdate) []v1.DependencyUpdate {
 	// Sort the dependency updates. This makes the outputs more readable, and it also allows us to more easily do duplicate removal and collapsing

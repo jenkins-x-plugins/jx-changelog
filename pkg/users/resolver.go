@@ -37,8 +37,8 @@ func (r *GitUserResolver) GitSignatureAsUser(signature *object.Signature) (*jenk
 // GitUserSliceAsUserDetailsSlice resolves a slice of git users to a slice of Jenkins X User Details
 func (r *GitUserResolver) GitUserSliceAsUserDetailsSlice(users []scm.User) ([]jenkinsv1.UserDetails, error) {
 	var answer []jenkinsv1.UserDetails
-	for _, user := range users {
-		us := user
+	for k := range users {
+		us := users[k]
 		u, err := r.Resolve(&us)
 		if err != nil {
 			return nil, err

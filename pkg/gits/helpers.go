@@ -9,7 +9,7 @@ import (
 )
 
 // GetRevisionBeforeDateText returns the revision before the given date in format "MonthName dayNumber year"
-func GetRevisionBeforeDateText(g gitclient.Interface, dir string, dateText string) (string, error) {
+func GetRevisionBeforeDateText(g gitclient.Interface, dir, dateText string) (string, error) {
 	branch, err := gitclient.Branch(g, dir)
 	if err != nil {
 		return "", err
@@ -87,7 +87,7 @@ func GetFirstCommitSha(g gitclient.Interface, dir string) (string, error) {
 }
 
 // FilterTags returns all tags from the repository at the given directory that match the filter
-func FilterTags(g gitclient.Interface, dir string, filter string) ([]string, error) {
+func FilterTags(g gitclient.Interface, dir, filter string) ([]string, error) {
 	args := []string{"tag"}
 	if filter != "" {
 		args = append(args, "--list", filter)
