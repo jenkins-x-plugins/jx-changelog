@@ -45,7 +45,7 @@ var (
 )
 
 func createCommitGroup(title string) *CommitGroup {
-	groupCounter += 1
+	groupCounter++
 	return &CommitGroup{
 		Title: title,
 		Order: groupCounter,
@@ -66,10 +66,10 @@ func ParseCommit(message string) *CommitInfo {
 	if idx > 0 {
 		kind := message[0:idx]
 		if strings.HasSuffix(kind, ")") {
-			idx := strings.Index(kind, "(")
-			if idx > 0 {
-				answer.Feature = strings.TrimSpace(kind[idx+1 : len(kind)-1])
-				kind = strings.TrimSpace(kind[0:idx])
+			ix := strings.Index(kind, "(")
+			if ix > 0 {
+				answer.Feature = strings.TrimSpace(kind[ix+1 : len(kind)-1])
+				kind = strings.TrimSpace(kind[0:ix])
 			}
 		}
 		answer.Kind = kind
@@ -108,8 +108,8 @@ func GenerateMarkdown(releaseSpec *v1.ReleaseSpec, gitInfo *giturl.GitRepository
 
 	issues := releaseSpec.Issues
 	issueMap := map[string]*v1.IssueSummary{}
-	for _, issue := range issues {
-		cp := issue
+	for k := range issues {
+		cp := issues[k]
 		issueMap[cp.ID] = &cp
 	}
 
@@ -176,8 +176,8 @@ func GenerateMarkdown(releaseSpec *v1.ReleaseSpec, gitInfo *giturl.GitRepository
 		buffer.WriteString("\n### Issues\n\n")
 
 		previous := ""
-		for _, issue := range issues {
-			i := issue
+		for k := range issues {
+			i := issues[k]
 			msg := describeIssue(gitInfo, &i)
 			if msg != previous {
 				buffer.WriteString("* " + msg + "\n")
@@ -189,8 +189,8 @@ func GenerateMarkdown(releaseSpec *v1.ReleaseSpec, gitInfo *giturl.GitRepository
 		buffer.WriteString("\n### Pull Requests\n\n")
 
 		previous := ""
-		for _, pr := range prs {
-			pullRequest := pr
+		for k := range prs {
+			pullRequest := prs[k]
 			msg := describeIssue(gitInfo, &pullRequest)
 			if msg != previous {
 				buffer.WriteString("* " + msg + "\n")
@@ -205,7 +205,8 @@ func GenerateMarkdown(releaseSpec *v1.ReleaseSpec, gitInfo *giturl.GitRepository
 		sequence := make([]v1.DependencyUpdate, 0)
 		buffer.WriteString("| Dependency | Component | New Version | Old Version |\n")
 		buffer.WriteString("| ---------- | --------- | ----------- | ----------- |\n")
-		for i, du := range releaseSpec.DependencyUpdates {
+		for i := range releaseSpec.DependencyUpdates {
+			du := releaseSpec.DependencyUpdates[i]
 			sequence = append(sequence, du)
 			// If it's the last element, or if the owner/repo:component changes, then print - this logic relies of the sort
 			// being owner, repo, component, fromVersion, ToVersion, which is done above
@@ -255,10 +256,8 @@ func describeUser(info *giturl.GitRepository, user *v1.UserDetails) string {
 		}
 		if url == "" {
 			userText = label
-		} else {
-			if label != "" {
-				userText = "[" + label + "](" + url + ")"
-			}
+		} else if label != "" {
+			userText = "[" + label + "](" + url + ")"
 		}
 		if userText != "" {
 			answer = " (" + userText + ")"
@@ -281,8 +280,8 @@ func describeCommit(info *giturl.GitRepository, cs *v1.CommitSummary, ci *Commit
 		user = cs.Committer
 	}
 	issueText := ""
-	for _, issueId := range cs.IssueIDs {
-		issue := issueMap[issueId]
+	for k := range cs.IssueIDs {
+		issue := issueMap[cs.IssueIDs[k]]
 		if issue != nil {
 			issueText += " " + describeIssueShort(issue)
 		}

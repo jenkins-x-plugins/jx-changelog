@@ -18,7 +18,7 @@ type GitIssueProvider struct {
 	fullName    string
 }
 
-func CreateGitIssueProvider(scmClient *scm.Client, owner string, repository string) (IssueProvider, error) {
+func CreateGitIssueProvider(scmClient *scm.Client, owner, repository string) (IssueProvider, error) {
 	if owner == "" {
 		return nil, fmt.Errorf("no owner specified")
 	}
@@ -65,7 +65,7 @@ func (i *GitIssueProvider) SearchIssues(query string) ([]*scm.Issue, error) {
 
 func (i *GitIssueProvider) SearchIssuesClosedSince(_ time.Time) ([]*scm.Issue, error) {
 	// TODO
-	//return i.GitProvider.SearchIssuesClosedSince(i.Owner, i.Repository, t)
+	// return i.GitProvider.SearchIssuesClosedSince(i.Owner, i.Repository, t)
 	return nil, nil
 }
 
@@ -85,7 +85,7 @@ func (i *GitIssueProvider) CreateIssue(_ *scm.Issue) (*scm.Issue, error) {
 	return nil, errors.Errorf("TODO")
 }
 
-func (i *GitIssueProvider) CreateIssueComment(key string, comment string) error {
+func (i *GitIssueProvider) CreateIssueComment(key, comment string) error {
 	ctx := context.Background()
 	n, err := issueKeyToNumber(key)
 	if err != nil {

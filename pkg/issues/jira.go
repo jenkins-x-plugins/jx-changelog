@@ -33,11 +33,10 @@ func CreateJiraIssueProvider(serverURL, username, apiToken, project string, batc
 		if batchMode {
 			log.Logger().Infof("Using JIRA server %s user name %s and an API token", serverURL, username)
 		}
-	} else {
-		if batchMode {
-			log.Logger().Warnf("No authentication found for JIRA server %s so using anonymous access", serverURL)
-		}
+	} else if batchMode {
+		log.Logger().Warnf("No authentication found for JIRA server %s so using anonymous access", serverURL)
 	}
+
 	jiraClient, _ := jira.NewClient(httpClient, serverURL)
 	return &JiraService{
 		JiraClient: jiraClient,
@@ -102,7 +101,7 @@ func (i *JiraService) CreateIssue(issue *scm.Issue) (*scm.Issue, error) {
 	return i.jiraToGitIssue(created), nil
 }
 
-func (i *JiraService) CreateIssueComment(_ string, _ string) error {
+func (i *JiraService) CreateIssueComment(_, _ string) error {
 	return fmt.Errorf("TODO")
 }
 
@@ -114,16 +113,16 @@ func (i *JiraService) jiraToGitIssue(issue *jira.Issue) *scm.Issue {
 	answer := &scm.Issue{}
 	key := issue.Key
 	// TODO
-	//answer.Key = key
+	// answer.Key = key
 	answer.Link = i.IssueURL(key)
 	fields := issue.Fields
 	if fields != nil {
 		answer.Title = fields.Summary
 		answer.Body = fields.Description
-		/// TODO
-		//answer.Labels = gits.ToGitLabels(fields.Labels)
 		// TODO
-		//answer.ClosedAt = jiraTimeToTimeP(fields.Resolutiondate)
+		// answer.Labels = gits.ToGitLabels(fields.Labels)
+		// TODO
+		// answer.ClosedAt = jiraTimeToTimeP(fields.Resolutiondate)
 		user := jiraUserToGitUser(fields.Reporter)
 		if user != nil {
 			answer.Author = *user
@@ -141,13 +140,14 @@ func jiraUserToGitUser(user *jira.User) *scm.User {
 		return nil
 	}
 	return &scm.User{
-		Avatar: jiraAvatarUrl(user),
+		Avatar: jiraAvatarURL(user),
 		Name:   user.Name,
 		Login:  user.Key,
 		Email:  user.EmailAddress,
 	}
 }
-func jiraAvatarUrl(user *jira.User) string {
+
+func jiraAvatarURL(user *jira.User) string {
 	answer := ""
 	if user != nil {
 		av := user.AvatarUrls
