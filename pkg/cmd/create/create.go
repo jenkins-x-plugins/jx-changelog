@@ -640,7 +640,7 @@ func FindIssueTracker(g gitclient.Interface, jxClient jxc.Interface, ns, dir, ow
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot load requirements config file")
 	}
-	if requirementsConfig != nil && requirementsConfig.Spec.IsEmpty() {
+	if requirementsConfig != nil && !requirementsConfig.Spec.IsEmpty() {
 		reqIssueTracker = requirementsConfig.Spec.Cluster.IssueTracker
 	}
 
