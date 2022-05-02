@@ -1,4 +1,4 @@
-FROM ghcr.io/jenkins-x/jx-boot:3.2.39
+FROM ghcr.io/jenkins-x/jx-boot:latest
 
 RUN apk --no-cache add sed
     
