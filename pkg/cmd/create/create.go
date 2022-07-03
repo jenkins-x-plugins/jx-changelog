@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -535,7 +534,7 @@ func (o *Options) Run() error {
 	}
 
 	if o.OutputMarkdownFile != "" {
-		err := ioutil.WriteFile(o.OutputMarkdownFile, []byte(markdown), files.DefaultFileWritePermissions)
+		err := os.WriteFile(o.OutputMarkdownFile, []byte(markdown), files.DefaultFileWritePermissions)
 		if err != nil {
 			return err
 		}
@@ -566,7 +565,7 @@ func (o *Options) Run() error {
 		releaseFile := filepath.Join(templatesDir, o.ReleaseYamlFile)
 		crdFile := filepath.Join(templatesDir, o.CrdYamlFile)
 		if o.GenerateReleaseYaml {
-			err = ioutil.WriteFile(releaseFile, data, files.DefaultFileWritePermissions)
+			err = os.WriteFile(releaseFile, data, files.DefaultFileWritePermissions)
 			if err != nil {
 				return errors.Wrapf(err, "failed to save Release YAML file %s", releaseFile)
 			}
@@ -580,7 +579,7 @@ func (o *Options) Run() error {
 				return errors.Wrapf(err, "failed to check for CRD YAML file %s", crdFile)
 			}
 			if o.OverwriteCRD || !exists {
-				err = ioutil.WriteFile(crdFile, []byte(ReleaseCrdYaml), files.DefaultFileWritePermissions)
+				err = os.WriteFile(crdFile, []byte(ReleaseCrdYaml), files.DefaultFileWritePermissions)
 				if err != nil {
 					return errors.Wrapf(err, "failed to save Release CRD YAML file %s", crdFile)
 				}
@@ -744,7 +743,6 @@ func (o *Options) Git() gitclient.Interface {
 }
 
 func (o *Options) addCommit(spec *v1.ReleaseSpec, commit *object.Commit, resolver *users.GitUserResolver) {
-	// TODO
 	url := ""
 	branch := "master"
 
@@ -898,7 +896,7 @@ func (o *Options) getTemplateResult(releaseSpec *v1.ReleaseSpec, templateName, t
 		if templateFile == "" {
 			return "", nil
 		}
-		data, err := ioutil.ReadFile(templateFile)
+		data, err := os.ReadFile(templateFile)
 		if err != nil {
 			return "", err
 		}
