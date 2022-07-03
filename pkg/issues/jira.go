@@ -112,17 +112,14 @@ func (i *JiraService) IssueURL(key string) string {
 func (i *JiraService) jiraToGitIssue(issue *jira.Issue) *scm.Issue {
 	answer := &scm.Issue{}
 	key := issue.Key
-	// TODO
-	// answer.Key = key
+	// TODO: answer.Key = key
 	answer.Link = i.IssueURL(key)
 	fields := issue.Fields
 	if fields != nil {
 		answer.Title = fields.Summary
 		answer.Body = fields.Description
-		// TODO
-		// answer.Labels = gits.ToGitLabels(fields.Labels)
-		// TODO
-		// answer.ClosedAt = jiraTimeToTimeP(fields.Resolutiondate)
+		// TODO: answer.Labels = gits.ToGitLabels(fields.Labels)
+		// TODO: answer.ClosedAt = jiraTimeToTimeP(fields.Resolutiondate)
 		user := jiraUserToGitUser(fields.Reporter)
 		if user != nil {
 			answer.Author = *user

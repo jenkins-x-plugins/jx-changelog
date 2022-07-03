@@ -3,6 +3,7 @@ package create_test
 import (
 	"context"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -73,7 +74,6 @@ func TestCreateChangelog(t *testing.T) {
 	t.Logf("title: %s\n", release.Title)
 	t.Logf("description: %s\n", release.Description)
 	t.Logf("tag: %s\n", release.Tag)
-
 }
 
 // AssertLoadReleaseYAML asserts we can parse the release.yaml after stripping the helm conditional
@@ -82,7 +82,7 @@ func AssertLoadReleaseYAML(t *testing.T, f string) *v1.Release {
 
 	rel := &v1.Release{}
 
-	data, err := ioutil.ReadFile(f)
+	data, err := os.ReadFile(f)
 	require.NoError(t, err, "failed to read file %s", f)
 
 	releaseYAML := strings.TrimSpace(string(data))

@@ -64,7 +64,7 @@ func (i *GitIssueProvider) SearchIssues(query string) ([]*scm.Issue, error) {
 }
 
 func (i *GitIssueProvider) SearchIssuesClosedSince(_ time.Time) ([]*scm.Issue, error) {
-	// TODO
+	// ToDo(@maintainers)
 	// return i.GitProvider.SearchIssuesClosedSince(i.Owner, i.Repository, t)
 	return nil, nil
 }
