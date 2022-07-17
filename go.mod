@@ -1,7 +1,7 @@
 module github.com/jenkins-x-plugins/jx-changelog
 
 require (
-	github.com/andygrunwald/go-jira v1.13.0
+	github.com/andygrunwald/go-jira v1.15.1
 	github.com/antham/chyle v1.11.0
 	github.com/cpuguy83/go-md2man v1.0.10
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
@@ -39,19 +39,19 @@ require (
 	github.com/bluekeyes/go-gitdiff v0.4.0 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/evanphx/json-patch v4.9.0+incompatible // indirect
 	github.com/fatih/color v1.10.0 // indirect
-	github.com/fatih/structs v1.0.0 // indirect
+	github.com/fatih/structs v1.1.0 // indirect
 	github.com/form3tech-oss/jwt-go v3.2.3+incompatible // indirect
 	github.com/go-logr/logr v0.4.0 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/golang-jwt/jwt/v4 v4.3.0 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/google/go-cmp v0.5.6 // indirect
-	github.com/google/go-querystring v0.0.0-20170111101155-53e6ce116135 // indirect
+	github.com/google/go-cmp v0.5.7 // indirect
+	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/uuid v1.2.0 // indirect
 	github.com/googleapis/gnostic v0.5.5 // indirect
@@ -76,7 +76,7 @@ require (
 	github.com/russross/blackfriday v1.6.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/src-d/gcfg v1.4.0 // indirect
-	github.com/trivago/tgo v1.0.1 // indirect
+	github.com/trivago/tgo v1.0.7 // indirect
 	github.com/vrischmann/envconfig v1.3.0 // indirect
 	github.com/xanzy/ssh-agent v0.2.1 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
@@ -107,9 +107,9 @@ require (
 )
 
 replace (
-	k8s.io/api => k8s.io/api v0.20.6
-	k8s.io/apimachinery => k8s.io/apimachinery v0.20.6
-	k8s.io/client-go => k8s.io/client-go v0.20.6
+	k8s.io/api => k8s.io/api v0.21.4
+	k8s.io/apimachinery => k8s.io/apimachinery v0.21.4
+	k8s.io/client-go => k8s.io/client-go v0.21.4
 )
 
 go 1.17
