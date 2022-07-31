@@ -163,11 +163,11 @@ func GenerateMarkdown(releaseSpec *v1.ReleaseSpec, gitInfo *giturl.GitRepository
 				legend := ""
 				buffer.WriteString("\n")
 				if i != unknownKindOrder || hasTitle {
-					hasTitle = true
+					hasTitle = hasTitle || i != unknownKindOrder
 					buffer.WriteString("### " + group.Title + "\n\n" + legend)
-				}
-				if i == unknownKindOrder {
-					buffer.WriteString("These commits did not use [Conventional Commits](https://conventionalcommits.org/) formatted messages:\n\n")
+					if i == unknownKindOrder {
+						buffer.WriteString("These commits did not use [Conventional Commits](https://conventionalcommits.org/) formatted messages:\n\n")
+					}
 				}
 			}
 			previous := ""
