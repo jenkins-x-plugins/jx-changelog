@@ -131,7 +131,8 @@ func GenerateMarkdown(releaseSpec *v1.ReleaseSpec, gitInfo *giturl.GitRepository
 		issueMap[cp.ID] = &cp
 	}
 
-	for _, cs := range releaseSpec.Commits {
+	for i := range releaseSpec.Commits {
+		cs := &releaseSpec.Commits[i]
 		message := cs.Message
 		if message != "" {
 			ci, bc := ParseCommit(message)
@@ -231,8 +232,8 @@ func GenerateMarkdown(releaseSpec *v1.ReleaseSpec, gitInfo *giturl.GitRepository
 	return buffer.String(), nil
 }
 
-func addCommitToGroup(gitInfo *giturl.GitRepository, commits v1.CommitSummary, ci *CommitInfo, issueMap map[string]*v1.IssueSummary, groupAndCommits map[int]*GroupAndCommitInfos) {
-	description := "* " + describeCommit(gitInfo, &commits, ci, issueMap) + "\n"
+func addCommitToGroup(gitInfo *giturl.GitRepository, commits *v1.CommitSummary, ci *CommitInfo, issueMap map[string]*v1.IssueSummary, groupAndCommits map[int]*GroupAndCommitInfos) {
+	description := "* " + describeCommit(gitInfo, commits, ci, issueMap) + "\n"
 	group := ci.Group()
 	gac := groupAndCommits[group.Order]
 	if gac == nil {
