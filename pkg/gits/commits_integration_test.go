@@ -99,6 +99,10 @@ BREAKING CHANGE: The git has fobbed!
 					Login: "rawlingsj",
 				},
 			},
+			{
+				Message:  "FOO-123: some other kind of commit\nFixes #345",
+				IssueIDs: []string{"345"},
+			},
 		},
 		Issues: []v1.IssueSummary{
 			{
@@ -132,6 +136,10 @@ BREAKING CHANGE: The git has fobbed!
 
 	expectedMarkdown := `## Changes
 
+### FOO-123
+
+* some other kind of commit [#345](http://url-to-issue/345) 
+
 ### BREAKING CHANGES
 
 * The git has fobbed! ([rawlingsj](https://github.com/rawlingsj)) [#345](http://url-to-issue/345) 
@@ -160,3 +168,5 @@ These commits did not use [Conventional Commits](https://conventionalcommits.org
 	assert.Equal(t, expectedMarkdown, markdown)
 
 }
+
+// TODO: Add tests for JIRA ass issue tracker
