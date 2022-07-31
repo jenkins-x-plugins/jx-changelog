@@ -13,10 +13,10 @@ import (
 )
 
 type CommitInfo struct {
-	Kind    string
-	Feature string
-	Message string
-	group   *CommitGroup
+	Type        string
+	Scope       string
+	Description string
+	group       *CommitGroup
 }
 
 type CommitGroup struct {
@@ -63,31 +63,31 @@ func ParseCommit(message string) (*CommitInfo, *CommitInfo) {
 	matches := ConventionalCommitRegexp.FindStringSubmatch(message)
 	if matches == nil {
 		return &CommitInfo{
-			Message: message,
+			Description: message,
 		}, nil
 	}
 
 	answer := &CommitInfo{
-		Kind:    matches[1],
-		Feature: matches[2],
-		Message: matches[4],
+		Type:        matches[1],
+		Scope:       matches[2],
+		Description: matches[4],
 	}
 	breaking := BreakingChangeRegexp.FindStringSubmatch(matches[5])
 	if breaking != nil {
 		return answer, &CommitInfo{
 			// Ugly to invent a special kind
-			Kind:    "break",
-			Message: breaking[1],
+			Type:        "break",
+			Description: breaking[1],
 		}
 	} else if matches[3] == "!" {
-		answer.Kind = "break"
+		answer.Type = "break"
 	}
 	return answer, nil
 }
 
 func (c *CommitInfo) Group() *CommitGroup {
 	if c.group == nil {
-		title, found := ConventionalCommitTitles[strings.ToLower(c.Kind)]
+		title, found := ConventionalCommitTitles[strings.ToLower(c.Type)]
 		if found {
 			c.group = title
 		} else {
@@ -95,10 +95,10 @@ func (c *CommitInfo) Group() *CommitGroup {
 			// something for yourself it's probably important for you.
 			undefinedGroupCounter--
 			newGroup := &CommitGroup{
-				Title: c.Kind,
+				Title: c.Type,
 				Order: undefinedGroupCounter,
 			}
-			ConventionalCommitTitles[strings.ToLower(c.Kind)] = newGroup
+			ConventionalCommitTitles[strings.ToLower(c.Type)] = newGroup
 			c.group = newGroup
 		}
 	}
@@ -290,10 +290,10 @@ func describeUser(info *giturl.GitRepository, user *v1.UserDetails) string {
 
 func describeCommit(info *giturl.GitRepository, cs *v1.CommitSummary, ci *CommitInfo, issueMap map[string]*v1.IssueSummary) string {
 	prefix := ""
-	if ci.Feature != "" {
-		prefix = ci.Feature + ": "
+	if ci.Scope != "" {
+		prefix = ci.Scope + ": "
 	}
-	message := strings.TrimSpace(ci.Message)
+	message := strings.TrimSpace(ci.Description)
 	lines := strings.Split(message, "\n")
 
 	// TODO add link to issue etc...
