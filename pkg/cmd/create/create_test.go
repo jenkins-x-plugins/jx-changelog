@@ -2,7 +2,6 @@ package create_test
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,7 +21,7 @@ import (
 )
 
 func TestCreateChangelog(t *testing.T) {
-	tmpDir, err := ioutil.TempDir("", "")
+	tmpDir, err := os.MkdirTemp("", "")
 	require.NoError(t, err, "could not create temp dir")
 
 	owner := "jstrachan"

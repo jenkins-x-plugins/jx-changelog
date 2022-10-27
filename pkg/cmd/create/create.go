@@ -68,6 +68,7 @@ type Options struct {
 	PreviousRevision    string
 	PreviousDate        string
 	CurrentRevision     string
+	TagPrefix           string
 	TemplatesDir        string
 	ReleaseYamlFile     string
 	CrdYamlFile         string
@@ -204,6 +205,7 @@ func NewCmdChangelogCreate() (*cobra.Command, *Options) {
 	cmd.Flags().StringVarP(&o.PreviousRevision, "previous-rev", "p", "", "the previous tag revision")
 	cmd.Flags().StringVarP(&o.PreviousDate, "previous-date", "", "", "the previous date to find a revision in format 'MonthName dayNumber year'")
 	cmd.Flags().StringVarP(&o.CurrentRevision, "rev", "", "", "the current tag revision")
+	cmd.Flags().StringVarP(&o.TagPrefix, "tag-prefix", "", "", "prefix to filter on when searching for version tags")
 	cmd.Flags().StringVarP(&o.TemplatesDir, "templates-dir", "t", "", "the directory containing the helm chart templates to generate the resources")
 	cmd.Flags().StringVarP(&o.ReleaseYamlFile, "release-yaml-file", "", "release.yaml", "the name of the file to generate the Release YAML")
 	cmd.Flags().StringVarP(&o.CrdYamlFile, "crd-yaml-file", "", "release-crd.yaml", "the name of the file to generate the Release CustomResourceDefinition YAML")
@@ -275,7 +277,7 @@ func (o *Options) Run() error {
 		}
 	}
 	if previousRev == "" {
-		previousRev, _, err = gits.GetCommitPointedToByPreviousTag(o.Git(), dir)
+		previousRev, _, err = gits.GetCommitPointedToByPreviousTag(o.Git(), dir, o.TagPrefix)
 		if err != nil {
 			return err
 		}
@@ -293,7 +295,7 @@ func (o *Options) Run() error {
 	}
 	currentRev := o.CurrentRevision
 	if currentRev == "" {
-		currentRev, _, err = gits.GetCommitPointedToByLatestTag(o.Git(), dir)
+		currentRev, _, err = gits.GetCommitPointedToByLatestTag(o.Git(), dir, o.TagPrefix)
 		if err != nil {
 			return err
 		}

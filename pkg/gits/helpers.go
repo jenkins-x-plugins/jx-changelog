@@ -19,8 +19,8 @@ func GetRevisionBeforeDateText(g gitclient.Interface, dir, dateText string) (str
 
 // GetCommitPointedToByLatestTag return the SHA of the commit pointed to by the latest git tag as well as the tag name
 // for the git repo in dir
-func GetCommitPointedToByLatestTag(g gitclient.Interface, dir string) (string, string, error) {
-	tagSHA, tagName, err := NthTag(g, dir, 1)
+func GetCommitPointedToByLatestTag(g gitclient.Interface, dir, prefix string) (string, string, error) {
+	tagSHA, tagName, err := NthTag(g, dir, 1, prefix)
 	if err != nil {
 		return "", "", errors.Wrapf(err, "getting commit pointed to by latest tag in %s", dir)
 	}
@@ -36,8 +36,8 @@ func GetCommitPointedToByLatestTag(g gitclient.Interface, dir string) (string, s
 
 // GetCommitPointedToByPreviousTag return the SHA of the commit pointed to by the latest-but-1 git tag as well as the tag
 // name for the git repo in dir
-func GetCommitPointedToByPreviousTag(g gitclient.Interface, dir string) (string, string, error) {
-	tagSHA, tagName, err := NthTag(g, dir, 2)
+func GetCommitPointedToByPreviousTag(g gitclient.Interface, dir, prefix string) (string, string, error) {
+	tagSHA, tagName, err := NthTag(g, dir, 2, prefix)
 	if err != nil {
 		return "", "", errors.Wrapf(err, "getting commit pointed to by previous tag in %s", dir)
 	}
@@ -53,13 +53,13 @@ func GetCommitPointedToByPreviousTag(g gitclient.Interface, dir string) (string,
 
 // NthTag return the SHA and tag name of nth tag in reverse chronological order from the repository at the given directory.
 // If the nth tag does not exist empty strings without an error are returned.
-func NthTag(g gitclient.Interface, dir string, n int) (string, string, error) {
+func NthTag(g gitclient.Interface, dir string, n int, prefix string) (string, string, error) {
 	args := []string{
 		"for-each-ref",
 		"--sort=-creatordate",
 		"--format=%(objectname)%00%(refname:short)",
 		fmt.Sprintf("--count=%d", n),
-		"refs/tags",
+		"refs/tags/" + prefix + "*",
 	}
 	out, err := g.Command(dir, args...)
 	if err != nil {
