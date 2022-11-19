@@ -27,10 +27,10 @@ func GetCommitPointedToByLatestTag(g gitclient.Interface, dir, prefix string) (s
 	if tagSHA == "" {
 		return tagSHA, tagName, nil
 	}
-	return GetCommitForTagSha(g, dir, err, tagSHA, tagName)
+	return GetCommitForTagSha(g, dir, tagSHA, tagName)
 }
 
-func GetCommitForTagSha(g gitclient.Interface, dir string, err error, tagSHA string, tagName string) (string, string, error) {
+func GetCommitForTagSha(g gitclient.Interface, dir, tagSHA, tagName string) (string, string, error) {
 	commitSHA, err := g.Command(dir, "rev-list", "-n", "1", tagSHA)
 	if err != nil {
 		return "", "", errors.Wrapf(err, "running for git rev-list -n 1 %s", tagSHA)

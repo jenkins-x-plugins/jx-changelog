@@ -312,7 +312,7 @@ func (o *Options) Run() error {
 					continue
 				}
 			}
-			previousRev, _, err = gits.GetCommitForTagSha(o.Git(), dir, err, tagSHA, previousTag)
+			previousRev, _, err = gits.GetCommitForTagSha(o.Git(), dir, tagSHA, previousTag)
 			if err != nil {
 				return err
 			}
