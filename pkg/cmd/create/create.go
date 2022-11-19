@@ -288,10 +288,33 @@ func (o *Options) Run() error {
 			}
 		}
 	}
+	ctx := context.Background()
+	fullName := scm.Join(o.ScmFactory.Owner, o.ScmFactory.Repository)
+	scmClient := o.ScmFactory.ScmClient
+
 	if previousRev == "" {
-		previousRev, _, err = gits.GetCommitPointedToByPreviousTag(o.Git(), dir, o.TagPrefix)
-		if err != nil {
-			return err
+		previousTag := ""
+		tagSHA := ""
+		for n := 2; true; n++ {
+			tagSHA, previousTag, err = gits.NthTag(o.Git(), dir, n, o.TagPrefix)
+			if err != nil {
+				return errors.Wrapf(err, "getting commit pointed to by previous tag in %s", dir)
+			}
+			if previousTag == "" {
+				break
+			}
+			// If we put changelog in release we ignore tags without releases
+			// so changelogs for failed release builds isn't skipped
+			if o.UpdateRelease && scmClient.Releases != nil {
+				_, _, err = scmClient.Releases.FindByTag(ctx, fullName, previousTag)
+				if err != nil {
+					continue
+				}
+			}
+			previousRev, _, err = gits.GetCommitForTagSha(o.Git(), dir, err, tagSHA, previousTag)
+			if err != nil {
+				return err
+			}
 		}
 		if previousRev == "" {
 			// lets assume we are the first release
@@ -426,7 +449,6 @@ func (o *Options) Run() error {
 		},
 	}
 
-	scmClient := o.ScmFactory.ScmClient
 	resolver := users.GitUserResolver{
 		GitProvider: scmClient,
 	}
@@ -495,9 +517,6 @@ func (o *Options) Run() error {
 			Draft:       o.Draft,
 			Prerelease:  o.Prerelease,
 		}
-
-		ctx := context.Background()
-		fullName := scm.Join(o.ScmFactory.Owner, o.ScmFactory.Repository)
 
 		// lets try find a release for the tag
 		if scmClient.Releases == nil {

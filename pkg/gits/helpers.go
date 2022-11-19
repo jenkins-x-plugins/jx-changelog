@@ -27,23 +27,10 @@ func GetCommitPointedToByLatestTag(g gitclient.Interface, dir, prefix string) (s
 	if tagSHA == "" {
 		return tagSHA, tagName, nil
 	}
-	commitSHA, err := g.Command(dir, "rev-list", "-n", "1", tagSHA)
-	if err != nil {
-		return "", "", errors.Wrapf(err, "running for git rev-list -n 1 %s", tagSHA)
-	}
-	return commitSHA, tagName, err
+	return GetCommitForTagSha(g, dir, err, tagSHA, tagName)
 }
 
-// GetCommitPointedToByPreviousTag return the SHA of the commit pointed to by the latest-but-1 git tag as well as the tag
-// name for the git repo in dir
-func GetCommitPointedToByPreviousTag(g gitclient.Interface, dir, prefix string) (string, string, error) {
-	tagSHA, tagName, err := NthTag(g, dir, 2, prefix)
-	if err != nil {
-		return "", "", errors.Wrapf(err, "getting commit pointed to by previous tag in %s", dir)
-	}
-	if tagSHA == "" {
-		return tagSHA, tagName, nil
-	}
+func GetCommitForTagSha(g gitclient.Interface, dir string, err error, tagSHA string, tagName string) (string, string, error) {
 	commitSHA, err := g.Command(dir, "rev-list", "-n", "1", tagSHA)
 	if err != nil {
 		return "", "", errors.Wrapf(err, "running for git rev-list -n 1 %s", tagSHA)
