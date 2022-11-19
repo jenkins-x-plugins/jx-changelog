@@ -79,6 +79,8 @@ type Options struct {
 	Footer              string
 	FooterFile          string
 	OutputMarkdownFile  string
+	ChangelogSeparator  string
+	IncludePRChangelog  bool
 	OverwriteCRD        bool
 	GenerateCRD         bool
 	GenerateReleaseYaml bool
@@ -212,6 +214,8 @@ func NewCmdChangelogCreate() (*cobra.Command, *Options) {
 	cmd.Flags().StringVarP(&o.Version, "version", "v", "", "The version to release")
 	cmd.Flags().StringVarP(&o.Build, "build", "", "", "The Build number which is used to update the PipelineActivity. If not specified its defaulted from  the '$BUILD_NUMBER' environment variable")
 	cmd.Flags().StringVarP(&o.OutputMarkdownFile, "output-markdown", "", "", "Put the changelog output in this file")
+	cmd.Flags().StringVarP(&o.ChangelogSeparator, "changelog-separator", "", os.Getenv("CHANGELOG_SEPARATOR"), "the separator to use when splitting commit message from changelog in the pull request body. Default to ----- or if set the CHANGELOG_SEPARATOR environment variable")
+	cmd.Flags().BoolVarP(&o.IncludePRChangelog, "include-changelog", "", true, "Should changelogs from pull requests be included. Defaults to true")
 	cmd.Flags().BoolVarP(&o.OverwriteCRD, "overwrite", "o", false, "overwrites the Release CRD YAML file if it exists")
 	cmd.Flags().BoolVarP(&o.GenerateCRD, "crd", "c", false, "Generate the CRD in the chart")
 	cmd.Flags().BoolVarP(&o.GenerateReleaseYaml, "generate-yaml", "y", false, "Generate the Release YAML in the local helm chart")
@@ -247,6 +251,10 @@ func (o *Options) Validate() error {
 	o.JXClient, o.Namespace, err = jxclient.LazyCreateJXClientAndNamespace(o.JXClient, o.Namespace)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create jx client")
+	}
+
+	if o.ChangelogSeparator == "" {
+		o.ChangelogSeparator = "-----"
 	}
 
 	return nil
@@ -420,16 +428,14 @@ func (o *Options) Run() error {
 	if commits != nil {
 		for k := range *commits {
 			c := (*commits)[k]
-			if o.IncludeMergeCommits || len(c.ParentHashes) <= 1 {
-				o.addCommit(&release.Spec, &c, &resolver)
-			}
+			o.addCommit(&release.Spec, &c, &resolver)
 		}
 	}
 
 	release.Spec.DependencyUpdates = CollapseDependencyUpdates(release.Spec.DependencyUpdates)
 
-	// lets try to update the release
-	markdown, err := gits.GenerateMarkdown(&release.Spec, gitInfo)
+	// let's try to update the release
+	markdown, err := gits.GenerateMarkdown(&release.Spec, gitInfo, o.ChangelogSeparator, o.IncludePRChangelog, o.IncludeMergeCommits)
 	if err != nil {
 		return err
 	}
@@ -745,6 +751,9 @@ func (o *Options) Git() gitclient.Interface {
 }
 
 func (o *Options) addCommit(spec *v1.ReleaseSpec, commit *object.Commit, resolver *users.GitUserResolver) {
+	if !(o.IncludeMergeCommits || o.IncludePRChangelog || len(commit.ParentHashes) <= 1) {
+		return
+	}
 	url := ""
 	branch := "master"
 
@@ -773,23 +782,28 @@ func (o *Options) addCommit(spec *v1.ReleaseSpec, commit *object.Commit, resolve
 	}
 
 	o.addIssuesAndPullRequests(spec, &commitSummary, commit)
-	spec.Commits = append(spec.Commits, commitSummary)
+	if o.IncludeMergeCommits || len(commit.ParentHashes) <= 1 {
+		spec.Commits = append(spec.Commits, commitSummary)
+	}
 }
 
 func (o *Options) addIssuesAndPullRequests(spec *v1.ReleaseSpec, commit *v1.CommitSummary, rawCommit *object.Commit) {
 	tracker := o.State.Tracker
 
-	regex := GitHubIssueRegex
 	issueKind := issues.GetIssueProvider(tracker)
 	if !o.State.LoggedIssueKind {
 		o.State.LoggedIssueKind = true
 		log.Logger().Infof("Finding issues in commit messages using %s format", issueKind)
 	}
-	if issueKind == issues.Jira {
-		regex = JIRAIssueRegex
-	}
 	message := fullCommitMessageText(rawCommit)
+	if issueKind == issues.Jira {
+		o.addIssuesAndPullRequestsWithPattern(spec, commit, JIRAIssueRegex, message, tracker)
+	}
 
+	o.addIssuesAndPullRequestsWithPattern(spec, commit, GitHubIssueRegex, message, tracker)
+}
+
+func (o *Options) addIssuesAndPullRequestsWithPattern(spec *v1.ReleaseSpec, commit *v1.CommitSummary, regex *regexp.Regexp, message string, tracker issues.IssueProvider) {
 	matches := regex.FindAllStringSubmatch(message, -1)
 
 	resolver := users.GitUserResolver{

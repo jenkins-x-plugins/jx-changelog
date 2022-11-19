@@ -14,6 +14,7 @@ import (
 
 func TestChangelogMarkdown(t *testing.T) {
 	releaseSpec := &v1.ReleaseSpec{
+		Version: "1",
 		Commits: []v1.CommitSummary{
 			{
 				Message: "some commit 1\nfixes #123",
@@ -38,11 +39,11 @@ func TestChangelogMarkdown(t *testing.T) {
 		Organisation: "jstrachan",
 		Name:         "foo",
 	}
-	markdown, err := gits.GenerateMarkdown(releaseSpec, gitInfo)
+	markdown, err := gits.GenerateMarkdown(releaseSpec, gitInfo, "", false, false)
 	assert.Nil(t, err)
 	//t.Log("Generated => " + markdown)
 
-	expectedMarkdown := `## Changes
+	expectedMarkdown := `## Changes in version 1
 
 * some commit 1 ([jstrachan](https://github.com/jstrachan))
 * some commit 2 ([rawlingsj](https://github.com/rawlingsj))
@@ -52,6 +53,7 @@ func TestChangelogMarkdown(t *testing.T) {
 
 func TestChangelogMarkdownWithConventionalCommits(t *testing.T) {
 	releaseSpec := &v1.ReleaseSpec{
+		Version: "2",
 		Commits: []v1.CommitSummary{
 			{
 				Message: "fix: some commit 1\nfixes #123",
@@ -124,17 +126,38 @@ BREAKING CHANGE: The git has fobbed!
 				URL: "http://url-to-issue/345",
 			},
 		},
+		PullRequests: []v1.IssueSummary{
+			{
+				ID:    "789",
+				Title: "Upgrade of foo/bar to 1.2.3",
+				Body: `Bumps foo/bar from 1.2.2 to 1.2.3.
+-----
+# bar
+
+## Changes in version 1.2.3
+
+### New Features
+
+* The bar is open!
+`,
+				User: &v1.UserDetails{
+					Name:  "Ankit",
+					Login: "ankit",
+				},
+				URL: "http://url-to-pull/789",
+			},
+		},
 	}
 	gitInfo := &giturl.GitRepository{
 		Host:         "github.com",
 		Organisation: "jstrachan",
 		Name:         "foo",
 	}
-	markdown, err := gits.GenerateMarkdown(releaseSpec, gitInfo)
+	markdown, err := gits.GenerateMarkdown(releaseSpec, gitInfo, "-----", true, false)
 	assert.Nil(t, err)
 	//t.Log("Generated => " + markdown)
 
-	expectedMarkdown := `## Changes
+	expectedMarkdown := `## Changes in version 2
 
 ### FOO-123
 
@@ -164,9 +187,18 @@ These commits did not use [Conventional Commits](https://conventionalcommits.org
 
 * [#456](http://url-to-issue/456) This needs to be fixed ASAP! ([jstrachan](https://github.com/jstrachan))
 * [#345](http://url-to-issue/345) The shit has hit the fan! ([msvticket](https://github.com/msvticket))
+
+
+# bar
+
+## Changes in version 1.2.3
+
+### New Features
+
+* The bar is open!
 `
 	assert.Equal(t, expectedMarkdown, markdown)
 
 }
 
-// TODO: Add tests for JIRA ass issue tracker
+// TODO: Add tests for JIRA as issue tracker
