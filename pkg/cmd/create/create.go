@@ -306,6 +306,7 @@ func (o *Options) Run() error {
 			// If we put changelog in release we ignore tags without releases
 			// so changelogs for failed release builds isn't skipped
 			if o.UpdateRelease && scmClient.Releases != nil {
+				// TODO: Should we care about the status of the release?
 				_, _, err = scmClient.Releases.FindByTag(ctx, fullName, previousTag)
 				if err != nil {
 					continue
