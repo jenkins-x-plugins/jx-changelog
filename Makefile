@@ -90,9 +90,6 @@ print-version: ## Print version
 build: $(GO_DEPENDENCIES) clean ## Build jx-labs binary for current OS
 	CGO_ENABLED=$(CGO_ENABLED) $(GO) $(BUILD_TARGET) $(BUILDFLAGS) -o build/$(BINARY_NAME) $(MAIN_SRC_FILE)
 
-build-all: $(GO_DEPENDENCIES) build make-reports-dir ## Build all files - runtime, all tests etc.
-	CGO_ENABLED=$(CGO_ENABLED) $(GOTEST) -run=nope -tags=integration -failfast -short ./... $(BUILDFLAGS)
-
 tidy-deps: ## Cleans up dependencies
 	$(GO) mod tidy
 	# mod tidy only takes compile dependencies into account, let's make sure we capture tooling dependencies as well
@@ -113,6 +110,9 @@ test-report: make-reports-dir get-test-deps test-coverage ## Create the test rep
 
 test-report-html: make-reports-dir get-test-deps test-coverage ## Create the test report in HTML format
 	@gocov convert $(COVER_OUT) | gocov-html > $(REPORTS_DIR)/cover.html && open $(REPORTS_DIR)/cover.html
+
+test-slow-integration:
+	KUBECONFIG=/cluster/connections/not/allowed CGO_ENABLED=$(CGO_ENABLED) $(GOTEST) --tags=unit,integration -failfast -short ./... $(TEST_BUILDFLAGS)
 
 install: $(GO_DEPENDENCIES) ## Install the binary
 	GOBIN=${GOPATH}/bin $(GO) install $(BUILDFLAGS) $(MAIN_SRC_FILE)
