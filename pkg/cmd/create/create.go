@@ -293,18 +293,13 @@ func (o *Options) Run() error {
 	scmClient := o.ScmFactory.ScmClient
 
 	if previousRev == "" {
-		previousTag := ""
-		tagSHA := ""
-		for n := 2; true; n++ {
-			tagSHA, previousTag, err = gits.NthTag(o.Git(), dir, n, o.TagPrefix)
-			if err != nil {
-				return errors.Wrapf(err, "getting commit pointed to by previous tag in %s", dir)
-			}
-			if previousTag == "" {
-				break
-			}
-			// If we put changelog in release we ignore tags without releases
-			// so changelogs for failed release builds isn't skipped
+		tagList, err := gits.NTags(o.Git(), dir, 11, o.TagPrefix)
+		if err != nil {
+			return errors.Wrapf(err, "getting tags in %s", dir)
+		}
+		for n := 1; n < len(tagList); n++ {
+			previousTag := tagList[n][1]
+			// We ignore tags without releases so changelogs for failed release builds isn't skipped
 			if o.UpdateRelease && scmClient.Releases != nil {
 				// TODO: Should we care about the status of the release?
 				_, _, err = scmClient.Releases.FindByTag(ctx, fullName, previousTag)
@@ -312,20 +307,28 @@ func (o *Options) Run() error {
 					continue
 				}
 			}
-			previousRev, _, err = gits.GetCommitForTagSha(o.Git(), dir, tagSHA, previousTag)
+			previousRev, _, err = gits.GetCommitForTagSha(o.Git(), dir, tagList[n][0], previousTag)
 			if err != nil {
 				return err
 			}
 		}
 		if previousRev == "" {
-			// lets assume we are the first release
-			previousRev, err = gits.GetFirstCommitSha(o.Git(), dir)
-			if err != nil {
-				return errors.Wrap(err, "failed to find first commit after we found no previous releaes")
-			}
-			if previousRev == "" {
-				log.Logger().Info("no previous commit version found so change diff unavailable")
-				return nil
+			if len(tagList) > 1 {
+				// If no release was found use the first tag before current
+				previousRev, _, err = gits.GetCommitForTagSha(o.Git(), dir, tagList[1][0], tagList[1][1])
+				if err != nil {
+					return err
+				}
+			} else {
+				// let's assume we are the first release
+				previousRev, err = gits.GetFirstCommitSha(o.Git(), dir)
+				if err != nil {
+					return errors.Wrap(err, "failed to find first commit after we found no previous releaes")
+				}
+				if previousRev == "" {
+					log.Logger().Info("no previous commit version found so change diff unavailable")
+					return nil
+				}
 			}
 		}
 	}
