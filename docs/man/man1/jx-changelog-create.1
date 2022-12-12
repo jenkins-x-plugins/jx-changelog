@@ -37,6 +37,20 @@ You can opt out of the release YAML generation via the '\-\-generate\-yaml=false
 To update the release notes on your git provider needs a git API token which is usually provided via the Tekton git authentication mechanism.
 
 .PP
+Apart from using your git provider as the issue tracker there is also support for Jira. You then specify issues in commit messages with the issue key that looks like ABC\-123. You can configure this in in similar ways as environments, see 
+\[la]https://jenkins-x.io/v3/develop/environments/config/\[ra]\&. An example configuration:
+
+.PP
+issueProvider:
+    jira:
+      serverUrl: 
+\[la]https://example.atlassian.net\[ra]
+      userName: user@example.com
+
+.PP
+Jira API token is taken from the environment variable JIRA\_API\_TOKEN. Can be populated using the jx\-boot\-job\-env\-vars secret.
+
+.PP
 By default jx commands look for a file '\~/.jx/gitAuth.yaml' to find the API tokens for Git servers. You can use 'jx create git token' to create a Git token.
 
 .PP
@@ -52,6 +66,10 @@ e.g. define environment variables GIT\_USERNAME and GIT\_API\_TOKEN
 .PP
 \fB\-\-build\fP=""
     The Build number which is used to update the PipelineActivity. If not specified its defaulted from  the '$BUILD\_NUMBER' environment variable
+
+.PP
+\fB\-\-changelog\-separator\fP=""
+    the separator to use when splitting commit message from changelog in the pull request body. Default to \-\-\-\-\- or if set the CHANGELOG\_SEPARATOR environment variable
 
 .PP
 \fB\-\-conditional\-release\fP[=true]
@@ -118,6 +136,10 @@ e.g. define environment variables GIT\_USERNAME and GIT\_API\_TOKEN
     help for create
 
 .PP
+\fB\-\-include\-changelog\fP[=true]
+    Should changelogs from pull requests be included. Defaults to true
+
+.PP
 \fB\-\-include\-merge\-commits\fP[=false]
     Include merge commits when generating the changelog
 
@@ -156,6 +178,10 @@ e.g. define environment variables GIT\_USERNAME and GIT\_API\_TOKEN
 .PP
 \fB\-\-rev\fP=""
     the current tag revision
+
+.PP
+\fB\-\-tag\-prefix\fP=""
+    prefix to filter on when searching for version tags
 
 .PP
 \fB\-t\fP, \fB\-\-templates\-dir\fP=""

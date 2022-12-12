@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/emirpasic/gods/sets/linkedhashset"
 	v1 "github.com/jenkins-x/jx-api/v4/pkg/apis/jenkins.io/v1"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/gitclient/giturl"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/stringhelpers"
@@ -115,11 +116,11 @@ func (c *CommitInfo) Order() int {
 
 type GroupAndCommitInfos struct {
 	group   *CommitGroup
-	commits []string
+	commits *linkedhashset.Set // duplicate commit messages should not show up in changelog
 }
 
 // GenerateMarkdown generates the markdown document for the commits
-func GenerateMarkdown(releaseSpec *v1.ReleaseSpec, gitInfo *giturl.GitRepository) (string, error) {
+func GenerateMarkdown(releaseSpec *v1.ReleaseSpec, gitInfo *giturl.GitRepository, changelogSeparator string, prchangelog, includeprs bool) (string, error) {
 	var hasCommitInfos bool
 
 	groupAndCommits := map[int]*GroupAndCommitInfos{}
@@ -152,12 +153,12 @@ func GenerateMarkdown(releaseSpec *v1.ReleaseSpec, gitInfo *giturl.GitRepository
 		return "", nil
 	}
 
-	buffer.WriteString("## Changes\n")
+	buffer.WriteString("## Changes in version " + releaseSpec.Version + "\n")
 
 	hasTitle := false
 	for i := undefinedGroupCounter; i <= unknownKindOrder; i++ {
 		gac := groupAndCommits[i]
-		if gac != nil && len(gac.commits) > 0 {
+		if gac != nil && len(gac.commits.Values()) > 0 {
 			group := gac.group
 			if group != nil {
 				legend := ""
@@ -170,12 +171,8 @@ func GenerateMarkdown(releaseSpec *v1.ReleaseSpec, gitInfo *giturl.GitRepository
 					}
 				}
 			}
-			previous := ""
-			for _, msg := range gac.commits {
-				if msg != previous {
-					buffer.WriteString(msg)
-					previous = msg
-				}
+			for _, msg := range gac.commits.Values() {
+				buffer.WriteString(msg.(string))
 			}
 		}
 	}
@@ -183,27 +180,17 @@ func GenerateMarkdown(releaseSpec *v1.ReleaseSpec, gitInfo *giturl.GitRepository
 	if len(issues) > 0 {
 		buffer.WriteString("\n### Issues\n\n")
 
-		previous := ""
 		for k := range issues {
-			i := issues[k]
-			msg := describeIssue(gitInfo, &i)
-			if msg != previous {
-				buffer.WriteString("* " + msg + "\n")
-				previous = msg
-			}
+			buffer.WriteString(describeIssue(gitInfo, &issues[k], false, "", true))
 		}
 	}
 	if len(prs) > 0 {
-		buffer.WriteString("\n### Pull Requests\n\n")
-
-		previous := ""
+		if includeprs {
+			buffer.WriteString("\n### Pull Requests\n\n")
+		}
 		for k := range prs {
-			pullRequest := prs[k]
-			msg := describeIssue(gitInfo, &pullRequest)
-			if msg != previous {
-				buffer.WriteString("* " + msg + "\n")
-				previous = msg
-			}
+			buffer.WriteString(describeIssue(gitInfo, &prs[k], prchangelog, changelogSeparator, includeprs))
+
 		}
 	}
 
@@ -239,15 +226,25 @@ func addCommitToGroup(gitInfo *giturl.GitRepository, commits *v1.CommitSummary, 
 	if gac == nil {
 		gac = &GroupAndCommitInfos{
 			group:   group,
-			commits: []string{},
+			commits: linkedhashset.New(),
 		}
 		groupAndCommits[group.Order] = gac
 	}
-	gac.commits = append(gac.commits, description)
+	gac.commits.Add(description)
 }
 
-func describeIssue(info *giturl.GitRepository, issue *v1.IssueSummary) string {
-	return describeIssueShort(issue) + issue.Title + describeUser(info, issue.User)
+func describeIssue(info *giturl.GitRepository, issue *v1.IssueSummary, includeChangelog bool, separator string, includeDescription bool) string {
+	changelog := ""
+	if includeChangelog {
+		parts := strings.SplitN(issue.Body, separator, 2)
+		if len(parts) == 2 {
+			changelog = "\n" + parts[1]
+		}
+	}
+	if includeDescription {
+		return "* " + describeIssueShort(issue) + issue.Title + describeUser(info, issue.User) + "\n" + changelog
+	}
+	return changelog
 }
 
 func describeIssueShort(issue *v1.IssueSummary) string {
