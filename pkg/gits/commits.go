@@ -116,7 +116,7 @@ func (c *CommitInfo) Order() int {
 
 type GroupAndCommitInfos struct {
 	group   *CommitGroup
-	commits *linkedhashset.Set
+	commits *linkedhashset.Set // duplicate commit messages should not show up in changelog
 }
 
 // GenerateMarkdown generates the markdown document for the commits
