@@ -63,6 +63,7 @@ e.g. define environment variables GIT_USERNAME and GIT_API_TOKEN
       --crd-yaml-file string         the name of the file to generate the Release CustomResourceDefinition YAML (default "release-crd.yaml")
       --dir string                   the directory to search for the .git to discover the git source URL (default ".")
       --draft                        The git provider release is marked as draft
+  -e, --exclude-regexp string        Regexp for excluding commit messages
       --fail-if-no-commits           Do we want to fail the build if we don't find any commits to generate the changelog
       --footer string                The changelog footer in markdown for the changelog. Can use go template expressions on the ReleaseSpec object: https://golang.org/pkg/text/template/
       --footer-file string           The file name of the changelog footer in markdown for the changelog. Can use go template expressions on the ReleaseSpec object: https://golang.org/pkg/text/template/

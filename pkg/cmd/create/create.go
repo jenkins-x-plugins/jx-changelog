@@ -65,36 +65,38 @@ type Options struct {
 	CommandRunner cmdrunner.CommandRunner
 	JXClient      jxc.Interface
 
-	Namespace           string
-	BuildNumber         string
-	PreviousRevision    string
-	PreviousDate        string
-	CurrentRevision     string
-	TagPrefix           string
-	TemplatesDir        string
-	ReleaseYamlFile     string
-	CrdYamlFile         string
-	Version             string
-	Build               string
-	Header              string
-	HeaderFile          string
-	Footer              string
-	FooterFile          string
-	OutputMarkdownFile  string
-	StatusPath          string
-	ChangelogSeparator  string
-	IncludePRChangelog  bool
-	OverwriteCRD        bool
-	GenerateCRD         bool
-	GenerateReleaseYaml bool
-	ConditionalRelease  bool
-	UpdateRelease       bool
-	NoReleaseInDev      bool
-	IncludeMergeCommits bool
-	FailIfFindCommits   bool
-	Draft               bool
-	Prerelease          bool
-	State               State
+	Namespace             string
+	BuildNumber           string
+	PreviousRevision      string
+	PreviousDate          string
+	CurrentRevision       string
+	TagPrefix             string
+	TemplatesDir          string
+	ReleaseYamlFile       string
+	CrdYamlFile           string
+	Version               string
+	Build                 string
+	Header                string
+	HeaderFile            string
+	Footer                string
+	FooterFile            string
+	OutputMarkdownFile    string
+	StatusPath            string
+	ChangelogSeparator    string
+	IncludePRChangelog    bool
+	OverwriteCRD          bool
+	GenerateCRD           bool
+	GenerateReleaseYaml   bool
+	ConditionalRelease    bool
+	UpdateRelease         bool
+	NoReleaseInDev        bool
+	IncludeMergeCommits   bool
+	FailIfFindCommits     bool
+	Draft                 bool
+	Prerelease            bool
+	State                 State
+	ExcludeRegexp         string
+	CompiledExcludeRegexp *regexp.Regexp
 }
 
 type State struct {
@@ -230,6 +232,7 @@ func NewCmdChangelogCreate() (*cobra.Command, *Options) {
 	cmd.Flags().BoolVarP(&o.FailIfFindCommits, "fail-if-no-commits", "", false, "Do we want to fail the build if we don't find any commits to generate the changelog")
 	cmd.Flags().BoolVarP(&o.Draft, "draft", "", false, "The git provider release is marked as draft")
 	cmd.Flags().BoolVarP(&o.Prerelease, "prerelease", "", false, "The git provider release is marked as a pre-release")
+	cmd.Flags().StringVarP(&o.ExcludeRegexp, "exclude-regexp", "e", "^release ", `Regexp for excluding commits. Default is "^release "`)
 
 	cmd.Flags().StringVarP(&o.Header, "header", "", "", "The changelog header in markdown for the changelog. Can use go template expressions on the ReleaseSpec object: https://golang.org/pkg/text/template/")
 	cmd.Flags().StringVarP(&o.HeaderFile, "header-file", "", "", "The file name of the changelog header in markdown for the changelog. Can use go template expressions on the ReleaseSpec object: https://golang.org/pkg/text/template/")
@@ -259,6 +262,12 @@ func (o *Options) Validate() error {
 
 	if o.ChangelogSeparator == "" {
 		o.ChangelogSeparator = "-----"
+	}
+	if o.ExcludeRegexp != "" {
+		o.CompiledExcludeRegexp, err = regexp.Compile(o.ExcludeRegexp)
+		if err != nil {
+			return errors.Wrapf(err, "invalid regexp for option --exclude-regexp")
+		}
 	}
 
 	return nil
@@ -372,29 +381,17 @@ func (o *Options) Run() error {
 			return err
 		}
 		log.Logger().Warnf("failed to find git commits between revision %s and %s due to: %s", previousRev, currentRev, err.Error())
-	}
-	if commits != nil {
-		commitSlice := *commits
-		if len(commitSlice) > 0 {
-			if strings.HasPrefix(commitSlice[0].Message, "release ") {
-				// remove the release commit from the log
-				tmp := commitSlice[1:]
-				commits = &tmp
-			}
-		}
-		if log.Logger().Logger.IsLevelEnabled(logrus.DebugLevel) {
-			log.Logger().Debugf("Found commits:")
-			if commits != nil {
-				for k := range *commits {
-					commit := (*commits)[k]
-					log.Logger().Debugf("  commit %s", commit.Hash)
-					log.Logger().Debugf("  Author: %s <%s>", commit.Author.Name, commit.Author.Email)
-					log.Logger().Debugf("  Date: %s", commit.Committer.When.Format(time.ANSIC))
-					log.Logger().Debugf("      %s\n\n\n", commit.Message)
-				}
-			}
+	} else if log.Logger().Logger.IsLevelEnabled(logrus.DebugLevel) {
+		log.Logger().Debugf("Found commits:")
+		for k := range *commits {
+			commit := (*commits)[k]
+			log.Logger().Debugf("  commit %s", commit.Hash)
+			log.Logger().Debugf("  Author: %s <%s>", commit.Author.Name, commit.Author.Email)
+			log.Logger().Debugf("  Date: %s", commit.Committer.When.Format(time.ANSIC))
+			log.Logger().Debugf("      %s\n\n\n", commit.Message)
 		}
 	}
+
 	version := o.Version
 	if version == "" {
 		version = SpecVersion
@@ -433,7 +430,7 @@ func (o *Options) Run() error {
 	if commits != nil {
 		for k := range *commits {
 			c := (*commits)[k]
-			o.addCommit(&release.Spec, &c, &resolver)
+			o.addCommit(&release.Spec, &c, &resolver, o.CompiledExcludeRegexp)
 		}
 	}
 
@@ -758,8 +755,9 @@ func (o *Options) Git() gitclient.Interface {
 	return o.GitClient
 }
 
-func (o *Options) addCommit(spec *v1.ReleaseSpec, commit *object.Commit, resolver *users.GitUserResolver) {
-	if !(o.IncludeMergeCommits || o.IncludePRChangelog || len(commit.ParentHashes) <= 1) {
+func (o *Options) addCommit(spec *v1.ReleaseSpec, commit *object.Commit, resolver *users.GitUserResolver, excludeRegexp *regexp.Regexp) {
+	if (!(o.IncludeMergeCommits || o.IncludePRChangelog || len(commit.ParentHashes) <= 1)) ||
+		(excludeRegexp != nil && excludeRegexp.MatchString(commit.Message)) {
 		return
 	}
 	url := ""
