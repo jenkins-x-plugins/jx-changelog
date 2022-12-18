@@ -2,10 +2,18 @@ apiVersion: updatebot.jenkins-x.io/v1alpha1
 kind: UpdateConfig
 spec:
   rules:
-    - urls:
-        - https://github.com/jenkins-x/jx3-pipeline-catalog
-      changes:
-        - regex:
-            pattern: "jenkins-x/jx-changelog:(.*)"
-            files:
-              - "**/*.yaml"
+  - urls:
+      - https://github.com/jenkins-x/jx3-pipeline-catalog
+    changes:
+      - regex:
+          pattern: "jenkins-x/jx-changelog:(.*)"
+          files:
+            - "**/*.yaml"
+  - urls:
+    - https://github.com/jenkins-x/jx
+    changes:
+    - regex:
+        pattern: |
+          \s+ChangelogVersion = "(.*)"
+        files:
+        - "pkg/plugins/versions.go"
