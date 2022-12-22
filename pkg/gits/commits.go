@@ -196,24 +196,15 @@ func GenerateMarkdown(releaseSpec *v1.ReleaseSpec, gitInfo *giturl.GitRepository
 
 	if len(releaseSpec.DependencyUpdates) > 0 {
 		buffer.WriteString("\n### Dependency Updates\n\n")
-		var previous v1.DependencyUpdate
-		sequence := make([]v1.DependencyUpdate, 0)
-		buffer.WriteString("| Dependency | Component | New Version | Old Version |\n")
-		buffer.WriteString("| ---------- | --------- | ----------- | ----------- |\n")
+		buffer.WriteString("| Component | New Version | Old Version |\n")
+		buffer.WriteString("| --------- | ----------- | ----------- |\n")
 		for i := range releaseSpec.DependencyUpdates {
 			du := releaseSpec.DependencyUpdates[i]
-			sequence = append(sequence, du)
-			// If it's the last element, or if the owner/repo:component changes, then print - this logic relies of the sort
-			// being owner, repo, component, fromVersion, ToVersion, which is done above
-			if i == len(releaseSpec.DependencyUpdates)-1 || du.Owner != previous.Owner || du.Repo != previous.Repo || du.Component != previous.Component {
-				// find the earliest from version
-				fromDu := sequence[0]
-				toDu := sequence[len(sequence)-1]
-				msg := fmt.Sprintf("| [%s/%s](%s) | %s | [%s](%s) | [%s](%s)|\n", toDu.Owner, toDu.Repo, toDu.URL, toDu.Component, toDu.ToVersion, toDu.ToReleaseHTMLURL, fromDu.FromVersion, fromDu.FromReleaseHTMLURL)
-				buffer.WriteString(msg)
-				sequence = make([]v1.DependencyUpdate, 0)
+			component := du.Component
+			if du.URL != "" {
+				component = fmt.Sprintf("[%s](%s)", component, du.URL)
 			}
-			previous = du
+			buffer.WriteString(fmt.Sprintf("| %s | %s | %s |\n", component, du.ToVersion, du.FromVersion))
 		}
 	}
 	return buffer.String(), nil

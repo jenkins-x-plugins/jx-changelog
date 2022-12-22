@@ -12,6 +12,7 @@ require (
 	github.com/jenkins-x/jx-helpers/v3 v3.3.1
 	github.com/jenkins-x/jx-logging/v3 v3.0.9
 	github.com/pkg/errors v0.9.1
+	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.2.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
@@ -36,6 +37,7 @@ require (
 	github.com/Azure/go-autorest/logger v0.2.1 // indirect
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
+	github.com/Masterminds/semver/v3 v3.1.1 // indirect
 	github.com/bluekeyes/go-gitdiff v0.4.0 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -73,7 +75,6 @@ require (
 	github.com/rawlingsj/jsonschema v0.0.0-20210511142122-a9c2cfdb7dcf // indirect
 	github.com/rickar/props v0.0.0-20170718221555-0b06aeb2f037 // indirect
 	github.com/russross/blackfriday v1.6.0 // indirect
-	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/src-d/gcfg v1.4.0 // indirect
 	github.com/trivago/tgo v1.0.7 // indirect
 	github.com/vrischmann/envconfig v1.3.0 // indirect
@@ -96,6 +97,7 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	helm.sh/helm/v3 v3.6.3 // indirect
 	k8s.io/api v0.22.15 // indirect
 	k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible // indirect
 	k8s.io/klog/v2 v2.9.0 // indirect

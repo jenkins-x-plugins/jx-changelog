@@ -80,9 +80,6 @@ The jx test suite is divided into three sections:
 To run the standard test suite:
 ```make test```
 
-To run the standard test suite including slow running tests:
-```make test-slow```
-
 To run all tests including integration tests (NOTE These tests are not encapsulated):
 ```make test-slow-integration```
 
@@ -114,7 +111,7 @@ This encourages good package design and will enable you to define the exported p
 To add an integration test, create a separate file for your integration tests using the naming convention `mypackage_integration_test.go` Use the same package declaration as your unit tests: `mypackage_test`. At the very top of the file before the package declaration add this custom build directive:
 
 ```
-// +build integration
+//go:build integration
 
 ```
 Note that there needs to be a blank line before you declare the package name. 

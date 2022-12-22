@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
 	"text/template"
 	"time"
@@ -18,6 +17,7 @@ import (
 	"github.com/jenkins-x-plugins/jx-changelog/pkg/helmhelpers"
 	"github.com/jenkins-x-plugins/jx-changelog/pkg/issues"
 	"github.com/jenkins-x-plugins/jx-changelog/pkg/users"
+	"github.com/jenkins-x-plugins/jx-gitops/pkg/releasereport"
 	"github.com/jenkins-x-plugins/jx-gitops/pkg/variablefinders"
 	"github.com/jenkins-x/go-scm/scm"
 	jxcore "github.com/jenkins-x/jx-api/v4/pkg/apis/core/v4beta1"
@@ -33,6 +33,8 @@ import (
 	"github.com/jenkins-x/jx-helpers/v3/pkg/scmhelpers"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/stringhelpers"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/termcolor"
+	"github.com/jenkins-x/jx-helpers/v3/pkg/yamls"
+	"github.com/sirupsen/logrus"
 
 	"github.com/jenkins-x/jx-helpers/v3/pkg/cobras/helper"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/cobras/templates"
@@ -79,6 +81,7 @@ type Options struct {
 	Footer              string
 	FooterFile          string
 	OutputMarkdownFile  string
+	StatusPath          string
 	ChangelogSeparator  string
 	IncludePRChangelog  bool
 	OverwriteCRD        bool
@@ -214,6 +217,7 @@ func NewCmdChangelogCreate() (*cobra.Command, *Options) {
 	cmd.Flags().StringVarP(&o.Version, "version", "v", "", "The version to release")
 	cmd.Flags().StringVarP(&o.Build, "build", "", "", "The Build number which is used to update the PipelineActivity. If not specified its defaulted from  the '$BUILD_NUMBER' environment variable")
 	cmd.Flags().StringVarP(&o.OutputMarkdownFile, "output-markdown", "", "", "Put the changelog output in this file")
+	cmd.Flags().StringVarP(&o.StatusPath, "status-path", "", filepath.Join("docs", "releases.yaml"), "The path to the deployment status file used to calculate dependency updates. Defaults to docs/releases.yaml")
 	cmd.Flags().StringVarP(&o.ChangelogSeparator, "changelog-separator", "", os.Getenv("CHANGELOG_SEPARATOR"), "the separator to use when splitting commit message from changelog in the pull request body. Default to ----- or if set the CHANGELOG_SEPARATOR environment variable")
 	cmd.Flags().BoolVarP(&o.IncludePRChangelog, "include-changelog", "", true, "Should changelogs from pull requests be included. Defaults to true")
 	cmd.Flags().BoolVarP(&o.OverwriteCRD, "overwrite", "o", false, "overwrites the Release CRD YAML file if it exists")
@@ -310,7 +314,6 @@ func (o *Options) Run() error {
 	}
 
 	templatesDir := o.TemplatesDir
-	dir = o.ScmFactory.Dir
 	if templatesDir == "" {
 		chartFile, err := helmhelpers.FindChart(dir)
 		if err != nil {
@@ -379,14 +382,16 @@ func (o *Options) Run() error {
 				commits = &tmp
 			}
 		}
-		log.Logger().Debugf("Found commits:")
-		if commits != nil {
-			for k := range *commits {
-				commit := (*commits)[k]
-				log.Logger().Debugf("  commit %s", commit.Hash)
-				log.Logger().Debugf("  Author: %s <%s>", commit.Author.Name, commit.Author.Email)
-				log.Logger().Debugf("  Date: %s", commit.Committer.When.Format(time.ANSIC))
-				log.Logger().Debugf("      %s\n\n\n", commit.Message)
+		if log.Logger().Logger.IsLevelEnabled(logrus.DebugLevel) {
+			log.Logger().Debugf("Found commits:")
+			if commits != nil {
+				for k := range *commits {
+					commit := (*commits)[k]
+					log.Logger().Debugf("  commit %s", commit.Hash)
+					log.Logger().Debugf("  Author: %s <%s>", commit.Author.Name, commit.Author.Email)
+					log.Logger().Debugf("  Date: %s", commit.Committer.When.Format(time.ANSIC))
+					log.Logger().Debugf("      %s\n\n\n", commit.Message)
+				}
 			}
 		}
 	}
@@ -432,7 +437,10 @@ func (o *Options) Run() error {
 		}
 	}
 
-	release.Spec.DependencyUpdates = CollapseDependencyUpdates(release.Spec.DependencyUpdates)
+	release.Spec.DependencyUpdates, err = o.getDependencyUpdates(previousRev)
+	if err != nil {
+		log.Logger().Warnf("failed to get dependency updates: %v", err)
+	}
 
 	// let's try to update the release
 	markdown, err := gits.GenerateMarkdown(&release.Spec, gitInfo, o.ChangelogSeparator, o.IncludePRChangelog, o.IncludeMergeCommits)
@@ -928,59 +936,91 @@ func (o *Options) getTemplateResult(releaseSpec *v1.ReleaseSpec, templateName, t
 	var buffer bytes.Buffer
 	writer := bufio.NewWriter(&buffer)
 	err = tmpl.Execute(writer, releaseSpec)
-	writer.Flush()
+	_ = writer.Flush()
 	return buffer.String(), err
 }
 
-// CollapseDependencyUpdates takes a raw set of dependencyUpdates, removes duplicates and collapses multiple updates to
-// the same org/repo:components into a sungle update
-func CollapseDependencyUpdates(dependencyUpdates []v1.DependencyUpdate) []v1.DependencyUpdate {
-	// Sort the dependency updates. This makes the outputs more readable, and it also allows us to more easily do duplicate removal and collapsing
+func (o *Options) getDependencyUpdates(previousRev string) ([]v1.DependencyUpdate, error) {
+	dir := o.ScmFactory.Dir
+	absStatusPath := filepath.Join(dir, o.StatusPath)
+	releasesExists, err := files.FileExists(absStatusPath)
+	if err != nil {
+		log.Logger().Debugf("fail to check if %s exists", absStatusPath)
+		return nil, nil
+	}
+	if !releasesExists {
+		log.Logger().Debugf("file %s doesn't exists", absStatusPath)
+		return nil, nil
+	}
+	previousReleasesBlob, err := o.GitClient.Command(dir, "cat-file", "blob", previousRev+":"+o.StatusPath)
+	if err != nil {
+		return nil, errors.Wrapf(err, "fail to check if %s exists for %s", o.StatusPath, previousRev)
+	}
+	var previousReleases []*releasereport.NamespaceReleases
+	err = yaml.Unmarshal([]byte(previousReleasesBlob), &previousReleases)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to unmarshal previous releases %s", previousRev)
+	}
 
-	sort.Slice(dependencyUpdates, func(i, j int) bool {
-		if dependencyUpdates[i].Owner == dependencyUpdates[j].Owner {
-			if dependencyUpdates[i].Repo == dependencyUpdates[j].Repo {
-				if dependencyUpdates[i].Component == dependencyUpdates[j].Component {
-					if dependencyUpdates[i].FromVersion == dependencyUpdates[j].FromVersion {
-						return dependencyUpdates[i].ToVersion < dependencyUpdates[j].ToVersion
-					}
-					return dependencyUpdates[i].FromVersion < dependencyUpdates[j].FromVersion
-				}
-				return dependencyUpdates[i].Component < dependencyUpdates[j].Component
-			}
-			return dependencyUpdates[i].Repo < dependencyUpdates[j].Repo
+	var currentReleases []*releasereport.NamespaceReleases
+	err = yamls.LoadFile(absStatusPath, &currentReleases)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to load %s", o.StatusPath)
+	}
+
+	previousReleasesMap := makeReleaseMap(&previousReleases)
+	updates := make([]v1.DependencyUpdate, 0)
+
+	for _, nsr := range currentReleases {
+		prevReleases, nsexisted := previousReleasesMap[nsr.Namespace]
+		if !nsexisted {
+			prevReleases = make(map[string]string)
 		}
-		return dependencyUpdates[i].Owner < dependencyUpdates[j].Owner
-	})
-
-	// Collapse  entries
-	collapsed := make([]v1.DependencyUpdate, 0)
-
-	if len(dependencyUpdates) > 0 {
-		start := 0
-		for i := 1; i <= len(dependencyUpdates); i++ {
-			if i == len(dependencyUpdates) || dependencyUpdates[i-1].Owner != dependencyUpdates[i].Owner || dependencyUpdates[i-1].Repo != dependencyUpdates[i].Repo || dependencyUpdates[i-1].Component != dependencyUpdates[i].Component {
-				end := i - 1
-				collapsed = append(collapsed, v1.DependencyUpdate{
+		for _, release := range nsr.Releases {
+			prevRel, relexisted := prevReleases[release.ReleaseName]
+			if relexisted {
+				delete(prevReleases, release.ReleaseName)
+			}
+			if prevRel != release.Version {
+				url := release.RepositoryURL
+				if url == "" {
+					url = release.ApplicationURL
+				}
+				updates = append(updates, v1.DependencyUpdate{
 					DependencyUpdateDetails: v1.DependencyUpdateDetails{
-						Owner:              dependencyUpdates[start].Owner,
-						Repo:               dependencyUpdates[start].Repo,
-						Component:          dependencyUpdates[start].Component,
-						URL:                dependencyUpdates[start].URL,
-						Host:               dependencyUpdates[start].Host,
-						FromVersion:        dependencyUpdates[start].FromVersion,
-						FromReleaseHTMLURL: dependencyUpdates[start].FromReleaseHTMLURL,
-						FromReleaseName:    dependencyUpdates[start].FromReleaseName,
-						ToVersion:          dependencyUpdates[end].ToVersion,
-						ToReleaseName:      dependencyUpdates[end].ToReleaseName,
-						ToReleaseHTMLURL:   dependencyUpdates[end].ToReleaseHTMLURL,
+						Component:   release.ReleaseName,
+						URL:         url,
+						FromVersion: prevRel,
+						ToVersion:   release.Version,
 					},
 				})
-				start = i
 			}
 		}
 	}
-	return collapsed
+
+	for _, nsr := range previousReleasesMap {
+		for name, release := range nsr {
+			updates = append(updates, v1.DependencyUpdate{
+				DependencyUpdateDetails: v1.DependencyUpdateDetails{
+					Component:   name,
+					FromVersion: release,
+				},
+			})
+		}
+	}
+
+	return updates, nil
+}
+
+func makeReleaseMap(namespaceReleases *[]*releasereport.NamespaceReleases) map[string]map[string]string {
+	res := make(map[string]map[string]string)
+	for _, nsr := range *namespaceReleases {
+		res[nsr.Namespace] = make(map[string]string)
+		for _, release := range nsr.Releases {
+			res[nsr.Namespace][release.ReleaseName] = release.Version
+		}
+	}
+	return res
 }
 
 func isReleaseNotFound(err error, gitKind string) bool {

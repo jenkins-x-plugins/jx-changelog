@@ -1,20 +1,23 @@
-package create_test
+//go:build integration
+
+package create
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/ghodss/yaml"
-
-	"github.com/jenkins-x-plugins/jx-changelog/pkg/cmd/create"
+	"github.com/jenkins-x-plugins/jx-gitops/pkg/releasereport"
 	"github.com/jenkins-x/go-scm/scm"
 	scmfake "github.com/jenkins-x/go-scm/scm/driver/fake"
 	v1 "github.com/jenkins-x/jx-api/v4/pkg/apis/jenkins.io/v1"
 	fakejx "github.com/jenkins-x/jx-api/v4/pkg/client/clientset/versioned/fake"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/gitclient"
+	"github.com/jenkins-x/jx-helpers/v3/pkg/yamls"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stretchr/testify/require"
@@ -31,7 +34,7 @@ func TestCreateChangelog(t *testing.T) {
 
 	scmClient, _ := scmfake.NewDefault()
 
-	_, o := create.NewCmdChangelogCreate()
+	_, o := NewCmdChangelogCreate()
 
 	g := o.Git()
 
@@ -105,4 +108,80 @@ func AssertLoadReleaseYAML(t *testing.T, f string) *v1.Release {
 	require.NoError(t, err, "failed to parse file %s yaml: %s", f, releaseYAML)
 
 	return rel
+}
+
+func TestCreateDependencyUpdates(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "")
+	require.NoError(t, err, "could not create temp dir")
+
+	owner := "jenkins-x-plugins"
+	repo := "jx-gitops"
+	fullName := scm.Join(owner, repo)
+	gitURL := "https://github.com/" + fullName
+	statusPath := "pkg/cmd/helmfile/report/testdata/releases.yaml"
+
+	scmClient, _ := scmfake.NewDefault()
+
+	_, o := NewCmdChangelogCreate()
+
+	g := o.Git()
+
+	_, err = gitclient.CloneToDir(g, gitURL, tmpDir)
+	require.NoError(t, err, "failed to clone %s", gitURL)
+	_, err = gitclient.CreateBranch(g, tmpDir)
+	require.NoError(t, err, "failed to create branch")
+	var currentReleases []*releasereport.NamespaceReleases
+	absStatusPath := filepath.Join(tmpDir, statusPath)
+	err = yamls.LoadFile(absStatusPath, &currentReleases)
+	require.NoError(t, err, "failed to read %s", o.StatusPath)
+	require.Greater(t, len(currentReleases), 1)
+	releases := currentReleases[0].Releases
+	require.NotEmpty(t, releases)
+	testRel := releases[0]
+	prevVersion := testRel.Version
+	testRel.Version = "99.0.0"
+	releases = currentReleases[2].Releases
+	require.NotEmpty(t, releases)
+	replaceRel := releases[0]
+	oldName := replaceRel.ReleaseName
+	replaceRel.ReleaseName = "the-new-name"
+	err = yamls.SaveFile(currentReleases, absStatusPath)
+	require.NoError(t, err, "failed to save status file")
+	err = gitclient.Add(g, tmpDir, ".")
+	require.NoError(t, err, "failed to add changes")
+	err = gitclient.CommitIfChanges(g, tmpDir, "chore: upgrade")
+	require.NoError(t, err, "failed to commit changes")
+	_, err = g.Command(tmpDir, "tag", "v99.0.0")
+	require.NoError(t, err, "failed to add tag")
+
+	o.JXClient = fakejx.NewSimpleClientset()
+	o.Namespace = "jx"
+	o.ScmFactory.Dir = tmpDir
+	o.ScmFactory.ScmClient = scmClient
+	o.ScmFactory.Owner = owner
+	o.ScmFactory.Repository = repo
+	o.BuildNumber = "1"
+	o.Version = "2.0.1"
+	o.UpdateRelease = false
+	o.StatusPath = statusPath
+	o.OutputMarkdownFile = filepath.Join(tmpDir, "changelog.md")
+	// o.LogLevel = "debug"
+	err = o.Run()
+	require.NoError(t, err, "could not run changelog")
+
+	assert.FileExists(t, o.OutputMarkdownFile)
+	markdown, err := os.ReadFile(o.OutputMarkdownFile)
+	require.NoError(t, err, "failed to read markdown file")
+
+	dependencyUpdates := fmt.Sprintf(`### Dependency Updates
+
+| Component | New Version | Old Version |
+| --------- | ----------- | ----------- |
+| [%s](%s) | %s | %s |
+| [%s](%s) | %s | %s |
+| %s | %s | %s |`,
+		testRel.ReleaseName, testRel.RepositoryURL, testRel.Version, prevVersion,
+		replaceRel.ReleaseName, replaceRel.RepositoryURL, replaceRel.Version, "",
+		oldName, "", replaceRel.Version)
+	assert.Contains(t, string(markdown), dependencyUpdates)
 }
