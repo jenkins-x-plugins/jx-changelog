@@ -24,6 +24,10 @@ spec:
         - name: build-make-linux
           resources: {}
         - name: build-make-test
+          script: |
+            #!/usr/bin/env sh
+            set -ex
+            make test-slow-integration
           resources: {}
         - name: build-container-build
           resources: {}
