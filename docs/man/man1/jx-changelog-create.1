@@ -65,7 +65,7 @@ e.g. define environment variables GIT\_USERNAME and GIT\_API\_TOKEN
 
 .PP
 \fB\-\-build\fP=""
-    The Build number which is used to update the PipelineActivity. If not specified its defaulted from  the '$BUILD\_NUMBER' environment variable
+    The Build number which is used to update the PipelineActivity. If not specified its defaulted from the '$BUILD\_NUMBER' environment variable
 
 .PP
 \fB\-\-changelog\-separator\fP=""
@@ -92,8 +92,8 @@ e.g. define environment variables GIT\_USERNAME and GIT\_API\_TOKEN
     The git provider release is marked as draft
 
 .PP
-\fB\-e\fP, \fB\-\-exclude\-regexp\fP=""
-    Regexp for excluding commit messages
+\fB\-e\fP, \fB\-\-exclude\-regexp\fP="^release "
+    Regexp for excluding commits. Can be set with environment variable CHANGELOG\_EXCLUDE\_REGEXP.
 
 .PP
 \fB\-\-fail\-if\-no\-commits\fP[=false]
@@ -141,7 +141,7 @@ e.g. define environment variables GIT\_USERNAME and GIT\_API\_TOKEN
 
 .PP
 \fB\-\-include\-changelog\fP[=true]
-    Should changelogs from pull requests be included. Defaults to true
+    Should changelogs from pull requests be included.
 
 .PP
 \fB\-\-include\-merge\-commits\fP[=false]
@@ -185,7 +185,7 @@ e.g. define environment variables GIT\_USERNAME and GIT\_API\_TOKEN
 
 .PP
 \fB\-\-status\-path\fP="docs/releases.yaml"
-    The path to the deployment status file used to calculate dependency updates. Defaults to docs/releases.yaml
+    The path to the deployment status file used to calculate dependency updates.
 
 .PP
 \fB\-\-tag\-prefix\fP=""
@@ -197,7 +197,7 @@ e.g. define environment variables GIT\_USERNAME and GIT\_API\_TOKEN
 
 .PP
 \fB\-\-update\-release\fP[=true]
-    Should we update the release on the Git repository with the changelog
+    Should we update the release on the Git repository with the changelog.
 
 .PP
 \fB\-\-verbose\fP[=false]
