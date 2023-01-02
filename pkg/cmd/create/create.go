@@ -65,38 +65,39 @@ type Options struct {
 	CommandRunner cmdrunner.CommandRunner
 	JXClient      jxc.Interface
 
-	Namespace             string
-	BuildNumber           string
-	PreviousRevision      string
-	PreviousDate          string
-	CurrentRevision       string
-	TagPrefix             string
-	TemplatesDir          string
-	ReleaseYamlFile       string
-	CrdYamlFile           string
-	Version               string
-	Build                 string
-	Header                string
-	HeaderFile            string
-	Footer                string
-	FooterFile            string
-	OutputMarkdownFile    string
-	StatusPath            string
-	ChangelogSeparator    string
-	IncludePRChangelog    bool
-	OverwriteCRD          bool
-	GenerateCRD           bool
-	GenerateReleaseYaml   bool
-	ConditionalRelease    bool
-	UpdateRelease         bool
-	NoReleaseInDev        bool
-	IncludeMergeCommits   bool
-	FailIfFindCommits     bool
-	Draft                 bool
-	Prerelease            bool
-	State                 State
-	ExcludeRegexp         string
-	CompiledExcludeRegexp *regexp.Regexp
+	Namespace                string
+	BuildNumber              string
+	PreviousRevision         string
+	PreviousDate             string
+	CurrentRevision          string
+	TagPrefix                string
+	TemplatesDir             string
+	ReleaseYamlFile          string
+	CrdYamlFile              string
+	Version                  string
+	Build                    string
+	Header                   string
+	HeaderFile               string
+	Footer                   string
+	FooterFile               string
+	OutputMarkdownFile       string
+	StatusPath               string
+	ChangelogSeparator       string
+	ChangelogOutputSeparator string
+	IncludePRChangelog       bool
+	OverwriteCRD             bool
+	GenerateCRD              bool
+	GenerateReleaseYaml      bool
+	ConditionalRelease       bool
+	UpdateRelease            bool
+	NoReleaseInDev           bool
+	IncludeMergeCommits      bool
+	FailIfFindCommits        bool
+	Draft                    bool
+	Prerelease               bool
+	State                    State
+	ExcludeRegexp            string
+	CompiledExcludeRegexp    *regexp.Regexp
 }
 
 type State struct {
@@ -221,6 +222,7 @@ func NewCmdChangelogCreate() (*cobra.Command, *Options) {
 	cmd.Flags().StringVarP(&o.OutputMarkdownFile, "output-markdown", "", "", "Put the changelog output in this file")
 	cmd.Flags().StringVarP(&o.StatusPath, "status-path", "", filepath.Join("docs", "releases.yaml"), "The path to the deployment status file used to calculate dependency updates.")
 	cmd.Flags().StringVarP(&o.ChangelogSeparator, "changelog-separator", "", os.Getenv("CHANGELOG_SEPARATOR"), "the separator to use when splitting commit message from changelog in the pull request body. Default to ----- or if set the CHANGELOG_SEPARATOR environment variable")
+	cmd.Flags().StringVarP(&o.ChangelogSeparator, "changelog-output-separator", "", "-----", "the separator to use in changelog between changelogs from pull request bodies.")
 	cmd.Flags().BoolVarP(&o.IncludePRChangelog, "include-changelog", "", true, "Should changelogs from pull requests be included.")
 	cmd.Flags().BoolVarP(&o.OverwriteCRD, "overwrite", "o", false, "overwrites the Release CRD YAML file if it exists")
 	cmd.Flags().BoolVarP(&o.GenerateCRD, "crd", "c", false, "Generate the CRD in the chart")
@@ -480,7 +482,7 @@ func (o *Options) Run() error {
 	}
 
 	// let's try to update the release
-	markdown, err := gits.GenerateMarkdown(&release.Spec, gitInfo, o.ChangelogSeparator, o.IncludePRChangelog, o.IncludeMergeCommits)
+	markdown, err := gits.GenerateMarkdown(&release.Spec, gitInfo, o.ChangelogSeparator, o.ChangelogOutputSeparator, o.IncludePRChangelog, o.IncludeMergeCommits)
 	if err != nil {
 		return err
 	}

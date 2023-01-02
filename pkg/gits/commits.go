@@ -120,7 +120,7 @@ type GroupAndCommitInfos struct {
 }
 
 // GenerateMarkdown generates the markdown document for the commits
-func GenerateMarkdown(releaseSpec *v1.ReleaseSpec, gitInfo *giturl.GitRepository, changelogSeparator string, prchangelog, includeprs bool) (string, error) {
+func GenerateMarkdown(releaseSpec *v1.ReleaseSpec, gitInfo *giturl.GitRepository, changelogSeparator, changelogOutputSeparator string, prchangelog, includeprs bool) (string, error) {
 	var hasCommitInfos bool
 
 	groupAndCommits := map[int]*GroupAndCommitInfos{}
@@ -159,18 +159,7 @@ func GenerateMarkdown(releaseSpec *v1.ReleaseSpec, gitInfo *giturl.GitRepository
 	for i := undefinedGroupCounter; i <= unknownKindOrder; i++ {
 		gac := groupAndCommits[i]
 		if gac != nil && len(gac.commits.Values()) > 0 {
-			group := gac.group
-			if group != nil {
-				legend := ""
-				buffer.WriteString("\n")
-				if i != unknownKindOrder || hasTitle {
-					hasTitle = hasTitle || i != unknownKindOrder
-					buffer.WriteString("### " + group.Title + "\n\n" + legend)
-					if i == unknownKindOrder {
-						buffer.WriteString("These commits did not use [Conventional Commits](https://conventionalcommits.org/) formatted messages:\n\n")
-					}
-				}
-			}
+			hasTitle = writeCommitGroupHeader(gac.group, &buffer, i == unknownKindOrder, hasTitle)
 			for _, msg := range gac.commits.Values() {
 				buffer.WriteString(msg.(string))
 			}
@@ -181,16 +170,14 @@ func GenerateMarkdown(releaseSpec *v1.ReleaseSpec, gitInfo *giturl.GitRepository
 		buffer.WriteString("\n### Issues\n\n")
 
 		for k := range issues {
-			buffer.WriteString(describeIssue(gitInfo, &issues[k], false, "", true))
+			buffer.WriteString(describeIssue(gitInfo, &issues[k]))
 		}
 	}
-	if len(prs) > 0 {
-		if includeprs {
-			buffer.WriteString("\n### Pull Requests\n\n")
-		}
-		for k := range prs {
-			buffer.WriteString(describeIssue(gitInfo, &prs[k], prchangelog, changelogSeparator, includeprs))
+	if includeprs && len(prs) > 0 {
+		buffer.WriteString("\n### Pull Requests\n\n")
 
+		for k := range prs {
+			buffer.WriteString(describeIssue(gitInfo, &prs[k]))
 		}
 	}
 
@@ -207,7 +194,26 @@ func GenerateMarkdown(releaseSpec *v1.ReleaseSpec, gitInfo *giturl.GitRepository
 			buffer.WriteString(fmt.Sprintf("| %s | %s | %s |\n", component, du.ToVersion, du.FromVersion))
 		}
 	}
+	if prchangelog && len(prs) > 0 {
+		for k := range prs {
+			buffer.WriteString(pullRequestChangelog(&prs[k], changelogSeparator, changelogOutputSeparator))
+		}
+	}
 	return buffer.String(), nil
+}
+
+func writeCommitGroupHeader(group *CommitGroup, buffer *bytes.Buffer, kindUnknown, hasTitle bool) bool {
+	if group != nil {
+		buffer.WriteString("\n")
+		if !kindUnknown || hasTitle {
+			hasTitle = true
+			buffer.WriteString("### " + group.Title + "\n\n")
+			if kindUnknown {
+				buffer.WriteString("These commits did not use [Conventional Commits](https://conventionalcommits.org/) formatted messages:\n\n")
+			}
+		}
+	}
+	return hasTitle
 }
 
 func addCommitToGroup(gitInfo *giturl.GitRepository, commits *v1.CommitSummary, ci *CommitInfo, issueMap map[string]*v1.IssueSummary, groupAndCommits map[int]*GroupAndCommitInfos) {
@@ -224,18 +230,16 @@ func addCommitToGroup(gitInfo *giturl.GitRepository, commits *v1.CommitSummary, 
 	gac.commits.Add(description)
 }
 
-func describeIssue(info *giturl.GitRepository, issue *v1.IssueSummary, includeChangelog bool, separator string, includeDescription bool) string {
-	changelog := ""
-	if includeChangelog {
-		parts := strings.SplitN(issue.Body, separator, 2)
-		if len(parts) == 2 {
-			changelog = "\n" + parts[1]
-		}
+func describeIssue(info *giturl.GitRepository, issue *v1.IssueSummary) string {
+	return "* " + describeIssueShort(issue) + issue.Title + describeUser(info, issue.User) + "\n"
+}
+
+func pullRequestChangelog(issue *v1.IssueSummary, separator, outputseparator string) string {
+	parts := strings.SplitN(issue.Body, separator, 2)
+	if len(parts) == 2 {
+		return "\n" + outputseparator + "\n" + parts[1]
 	}
-	if includeDescription {
-		return "* " + describeIssueShort(issue) + issue.Title + describeUser(info, issue.User) + "\n" + changelog
-	}
-	return changelog
+	return ""
 }
 
 func describeIssueShort(issue *v1.IssueSummary) string {
