@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -19,8 +20,9 @@ import (
 	"github.com/jenkins-x/jx-helpers/v3/pkg/gitclient"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/yamls"
 	"github.com/stretchr/testify/assert"
-
 	"github.com/stretchr/testify/require"
+	"gopkg.in/src-d/go-git.v4/plumbing"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
 )
 
 func TestCreateChangelog(t *testing.T) {
@@ -50,6 +52,7 @@ func TestCreateChangelog(t *testing.T) {
 	o.BuildNumber = "1"
 	o.Version = "2.0.1"
 	o.GenerateReleaseYaml = true
+	o.ExcludeRegexp = ""
 	err = o.Run()
 	require.NoError(t, err, "could not run changelog")
 
@@ -184,4 +187,23 @@ func TestCreateDependencyUpdates(t *testing.T) {
 		replaceRel.ReleaseName, replaceRel.RepositoryURL, replaceRel.Version, "",
 		oldName, "", replaceRel.Version)
 	assert.Contains(t, string(markdown), dependencyUpdates)
+}
+
+func TestAddCommit(t *testing.T) {
+	_, o := NewCmdChangelogCreate()
+
+	release := v1.ReleaseSpec{
+		Name:         SpecName,
+		Commits:      []v1.CommitSummary{},
+		Issues:       []v1.IssueSummary{},
+		PullRequests: []v1.IssueSummary{},
+	}
+	exclude, _ := regexp.Compile(o.ExcludeRegexp)
+	o.addCommit(&release, &object.Commit{Message: "release 1.0.0", Hash: plumbing.NewHash("123")}, nil, exclude)
+	assert.Empty(t, release.Commits)
+	exclude, _ = regexp.Compile(`^chore`)
+	o.addCommit(&release, &object.Commit{Message: "chore: updated dependency", Hash: plumbing.NewHash("234")}, nil, exclude)
+	assert.Empty(t, release.Commits)
+	o.addCommit(&release, &object.Commit{Message: "feat: Cool new feature", Hash: plumbing.NewHash("234")}, nil, exclude)
+	assert.Len(t, release.Commits, 1)
 }
