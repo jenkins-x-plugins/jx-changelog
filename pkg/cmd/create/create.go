@@ -216,7 +216,7 @@ func NewCmdChangelogCreate() (*cobra.Command, *Options) {
 	cmd.Flags().StringVarP(&o.TemplatesDir, "templates-dir", "t", "", "the directory containing the helm chart templates to generate the resources")
 	cmd.Flags().StringVarP(&o.ReleaseYamlFile, "release-yaml-file", "", "release.yaml", "the name of the file to generate the Release YAML")
 	cmd.Flags().StringVarP(&o.CrdYamlFile, "crd-yaml-file", "", "release-crd.yaml", "the name of the file to generate the Release CustomResourceDefinition YAML")
-	cmd.Flags().StringVarP(&o.Version, "version", "v", "", "The version to release")
+	cmd.Flags().StringVarP(&o.Version, "version", "v", "", "The version to release. If you specify --rev it is mandatory and needs to be a tag name to be able to add changelog release at git provider")
 	cmd.Flags().StringVarP(&o.Build, "build", "", "", "The Build number which is used to update the PipelineActivity. If not specified its defaulted from the '$BUILD_NUMBER' environment variable")
 	cmd.Flags().StringVarP(&o.OutputMarkdownFile, "output-markdown", "", "", "Put the changelog output in this file")
 	cmd.Flags().StringVarP(&o.StatusPath, "status-path", "", filepath.Join("docs", "releases.yaml"), "The path to the deployment status file used to calculate dependency updates.")
@@ -301,28 +301,60 @@ func (o *Options) Run() error {
 			}
 		}
 	}
+	ctx := context.Background()
+	fullName := scm.Join(o.ScmFactory.Owner, o.ScmFactory.Repository)
+	scmClient := o.ScmFactory.ScmClient
+
 	if previousRev == "" {
-		previousRev, _, err = gits.GetCommitPointedToByPreviousTag(o.Git(), dir, o.TagPrefix)
+		tagList, err := gits.NTags(o.Git(), dir, 11, o.TagPrefix)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "getting tags in %s", dir)
+		}
+		for n := 1; n < len(tagList); n++ {
+			previousTag := tagList[n][1]
+			// We ignore tags without releases so changelogs for failed release builds isn't skipped
+			if o.UpdateRelease && scmClient.Releases != nil {
+				// TODO: Should we care about the status of the release?
+				_, _, err = scmClient.Releases.FindByTag(ctx, fullName, previousTag)
+				if err != nil {
+					continue
+				}
+			}
+			previousRev, _, err = gits.GetCommitForTagSha(o.Git(), dir, tagList[n][0], previousTag)
+			if err != nil {
+				return err
+			}
 		}
 		if previousRev == "" {
-			// lets assume we are the first release
-			previousRev, err = gits.GetFirstCommitSha(o.Git(), dir)
-			if err != nil {
-				return errors.Wrap(err, "failed to find first commit after we found no previous releaes")
-			}
-			if previousRev == "" {
-				log.Logger().Info("no previous commit version found so change diff unavailable")
-				return nil
+			if len(tagList) > 1 {
+				// If no release was found use the first tag before current
+				previousRev, _, err = gits.GetCommitForTagSha(o.Git(), dir, tagList[1][0], tagList[1][1])
+				if err != nil {
+					return err
+				}
+			} else {
+				// let's assume we are the first release
+				previousRev, err = gits.GetFirstCommitSha(o.Git(), dir)
+				if err != nil {
+					return errors.Wrap(err, "failed to find first commit after we found no previous releaes")
+				}
+				if previousRev == "" {
+					log.Logger().Info("no previous commit version found so change diff unavailable")
+					return nil
+				}
 			}
 		}
 	}
 	currentRev := o.CurrentRevision
+	version := o.Version
+	tagName := version
 	if currentRev == "" {
-		currentRev, _, err = gits.GetCommitPointedToByLatestTag(o.Git(), dir, o.TagPrefix)
+		currentRev, tagName, err = gits.GetCommitPointedToByLatestTag(o.Git(), dir, o.TagPrefix)
 		if err != nil {
 			return err
+		}
+		if version == "" {
+			version = tagName
 		}
 	}
 
@@ -396,9 +428,14 @@ func (o *Options) Run() error {
 		}
 	}
 
-	version := o.Version
-	if version == "" {
-		version = SpecVersion
+	prefix := "v"
+	if o.TagPrefix != "" {
+		prefix = o.TagPrefix
+	}
+	version = strings.TrimPrefix(version, prefix)
+	specVersion := version
+	if specVersion == "" {
+		specVersion = SpecVersion
 	}
 
 	release := &v1.Release{
@@ -416,7 +453,7 @@ func (o *Options) Run() error {
 		},
 		Spec: v1.ReleaseSpec{
 			Name:          SpecName,
-			Version:       version,
+			Version:       specVersion,
 			GitOwner:      gitInfo.Organisation,
 			GitRepository: gitInfo.Name,
 			GitHTTPURL:    gitInfo.HttpsURL(),
@@ -427,7 +464,6 @@ func (o *Options) Run() error {
 		},
 	}
 
-	scmClient := o.ScmFactory.ScmClient
 	resolver := users.GitUserResolver{
 		GitProvider: scmClient,
 	}
@@ -461,34 +497,6 @@ func (o *Options) Run() error {
 	log.Logger().Debugf("Generated release notes:\n\n%s\n", markdown)
 
 	if version != "" && o.UpdateRelease {
-		tags, err := gits.FilterTags(o.Git(), dir, version)
-		if err != nil {
-			return errors.Wrapf(err, "listing tags with pattern %s in %s", version, dir)
-		}
-		vVersion := fmt.Sprintf("v%s", version)
-		vtags, err := gits.FilterTags(o.Git(), dir, vVersion)
-		if err != nil {
-			return errors.Wrapf(err, "listing tags with pattern %s in %s", vVersion, dir)
-		}
-		foundTag := false
-		foundVTag := false
-
-		for _, t := range tags {
-			if t == version {
-				foundTag = true
-				break
-			}
-		}
-		for _, t := range vtags {
-			if t == vVersion {
-				foundVTag = true
-				break
-			}
-		}
-		tagName := version
-		if foundVTag && !foundTag {
-			tagName = vVersion
-		}
 		releaseInfo := &scm.ReleaseInput{
 			Title:       version,
 			Tag:         tagName,
@@ -497,10 +505,7 @@ func (o *Options) Run() error {
 			Prerelease:  o.Prerelease,
 		}
 
-		ctx := context.Background()
-		fullName := scm.Join(o.ScmFactory.Owner, o.ScmFactory.Repository)
-
-		// lets try find a release for the tag
+		// let's try to find a release for the tag
 		if scmClient.Releases == nil {
 			log.Logger().Warnf("scm provider does not support Releases so cannot find releases")
 		} else {
@@ -577,7 +582,6 @@ func (o *Options) Run() error {
 		return fmt.Errorf("could not marshal release to yaml")
 	}
 
-	cleanVersion := ""
 	if templatesDir != "" {
 		releaseFile := filepath.Join(templatesDir, o.ReleaseYamlFile)
 		crdFile := filepath.Join(templatesDir, o.CrdYamlFile)
@@ -588,8 +592,6 @@ func (o *Options) Run() error {
 			}
 			log.Logger().Infof("generated: %s", info(releaseFile))
 		}
-		cleanVersion = strings.TrimPrefix(version, "v")
-		release.Spec.Version = cleanVersion
 		if o.GenerateCRD {
 			exists, err := files.FileExists(crdFile)
 			if err != nil {
@@ -611,7 +613,7 @@ func (o *Options) Run() error {
 	}
 	releaseNotesURL := release.Spec.ReleaseNotesURL
 
-	// lets modify the PipelineActivity
+	// let's modify the PipelineActivity
 	err = o.updatePipelineActivity(func(pa *v1.PipelineActivity) (bool, error) {
 		updated := false
 		ps := &pa.Spec
@@ -632,7 +634,7 @@ func (o *Options) Run() error {
 			ps.LastCommitURL = doUpdate(ps.LastCommitURL, lastCommit.URL)
 		}
 		ps.ReleaseNotesURL = doUpdate(ps.ReleaseNotesURL, releaseNotesURL)
-		ps.Version = doUpdate(ps.Version, cleanVersion)
+		ps.Version = doUpdate(ps.Version, version)
 		return updated, nil
 	})
 	if err != nil {
@@ -938,7 +940,10 @@ func (o *Options) getTemplateResult(releaseSpec *v1.ReleaseSpec, templateName, t
 	var buffer bytes.Buffer
 	writer := bufio.NewWriter(&buffer)
 	err = tmpl.Execute(writer, releaseSpec)
-	_ = writer.Flush()
+	flushErr := writer.Flush()
+	if err == nil {
+		err = flushErr
+	}
 	return buffer.String(), err
 }
 
