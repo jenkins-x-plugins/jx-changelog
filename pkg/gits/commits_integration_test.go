@@ -38,7 +38,7 @@ func TestChangelogMarkdown(t *testing.T) {
 		Organisation: "jstrachan",
 		Name:         "foo",
 	}
-	markdown, err := gits.GenerateMarkdown(releaseSpec, gitInfo, "", false, false)
+	markdown, err := gits.GenerateMarkdown(releaseSpec, gitInfo, "", "", false, false)
 	assert.Nil(t, err)
 	//t.Log("Generated => " + markdown)
 
@@ -152,7 +152,7 @@ BREAKING CHANGE: The git has fobbed!
 		Organisation: "jstrachan",
 		Name:         "foo",
 	}
-	markdown, err := gits.GenerateMarkdown(releaseSpec, gitInfo, "-----", true, false)
+	markdown, err := gits.GenerateMarkdown(releaseSpec, gitInfo, "-----", "-----", true, false)
 	assert.Nil(t, err)
 	//t.Log("Generated => " + markdown)
 
@@ -187,6 +187,7 @@ These commits did not use [Conventional Commits](https://conventionalcommits.org
 * [#456](http://url-to-issue/456) This needs to be fixed ASAP! ([jstrachan](https://github.com/jstrachan))
 * [#345](http://url-to-issue/345) The shit has hit the fan! ([msvticket](https://github.com/msvticket))
 
+-----
 
 # bar
 
