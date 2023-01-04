@@ -65,36 +65,38 @@ type Options struct {
 	CommandRunner cmdrunner.CommandRunner
 	JXClient      jxc.Interface
 
-	Namespace           string
-	BuildNumber         string
-	PreviousRevision    string
-	PreviousDate        string
-	CurrentRevision     string
-	TagPrefix           string
-	TemplatesDir        string
-	ReleaseYamlFile     string
-	CrdYamlFile         string
-	Version             string
-	Build               string
-	Header              string
-	HeaderFile          string
-	Footer              string
-	FooterFile          string
-	OutputMarkdownFile  string
-	StatusPath          string
-	ChangelogSeparator  string
-	IncludePRChangelog  bool
-	OverwriteCRD        bool
-	GenerateCRD         bool
-	GenerateReleaseYaml bool
-	ConditionalRelease  bool
-	UpdateRelease       bool
-	NoReleaseInDev      bool
-	IncludeMergeCommits bool
-	FailIfFindCommits   bool
-	Draft               bool
-	Prerelease          bool
-	State               State
+	Namespace             string
+	BuildNumber           string
+	PreviousRevision      string
+	PreviousDate          string
+	CurrentRevision       string
+	TagPrefix             string
+	TemplatesDir          string
+	ReleaseYamlFile       string
+	CrdYamlFile           string
+	Version               string
+	Build                 string
+	Header                string
+	HeaderFile            string
+	Footer                string
+	FooterFile            string
+	OutputMarkdownFile    string
+	StatusPath            string
+	ChangelogSeparator    string
+	IncludePRChangelog    bool
+	OverwriteCRD          bool
+	GenerateCRD           bool
+	GenerateReleaseYaml   bool
+	ConditionalRelease    bool
+	UpdateRelease         bool
+	NoReleaseInDev        bool
+	IncludeMergeCommits   bool
+	FailIfFindCommits     bool
+	Draft                 bool
+	Prerelease            bool
+	State                 State
+	ExcludeRegexp         string
+	CompiledExcludeRegexp *regexp.Regexp
 }
 
 type State struct {
@@ -215,21 +217,26 @@ func NewCmdChangelogCreate() (*cobra.Command, *Options) {
 	cmd.Flags().StringVarP(&o.ReleaseYamlFile, "release-yaml-file", "", "release.yaml", "the name of the file to generate the Release YAML")
 	cmd.Flags().StringVarP(&o.CrdYamlFile, "crd-yaml-file", "", "release-crd.yaml", "the name of the file to generate the Release CustomResourceDefinition YAML")
 	cmd.Flags().StringVarP(&o.Version, "version", "v", "", "The version to release. If you specify --rev it is mandatory and needs to be a tag name to be able to add changelog release at git provider")
-	cmd.Flags().StringVarP(&o.Build, "build", "", "", "The Build number which is used to update the PipelineActivity. If not specified its defaulted from  the '$BUILD_NUMBER' environment variable")
+	cmd.Flags().StringVarP(&o.Build, "build", "", "", "The Build number which is used to update the PipelineActivity. If not specified its defaulted from the '$BUILD_NUMBER' environment variable")
 	cmd.Flags().StringVarP(&o.OutputMarkdownFile, "output-markdown", "", "", "Put the changelog output in this file")
-	cmd.Flags().StringVarP(&o.StatusPath, "status-path", "", filepath.Join("docs", "releases.yaml"), "The path to the deployment status file used to calculate dependency updates. Defaults to docs/releases.yaml")
+	cmd.Flags().StringVarP(&o.StatusPath, "status-path", "", filepath.Join("docs", "releases.yaml"), "The path to the deployment status file used to calculate dependency updates.")
 	cmd.Flags().StringVarP(&o.ChangelogSeparator, "changelog-separator", "", os.Getenv("CHANGELOG_SEPARATOR"), "the separator to use when splitting commit message from changelog in the pull request body. Default to ----- or if set the CHANGELOG_SEPARATOR environment variable")
-	cmd.Flags().BoolVarP(&o.IncludePRChangelog, "include-changelog", "", true, "Should changelogs from pull requests be included. Defaults to true")
+	cmd.Flags().BoolVarP(&o.IncludePRChangelog, "include-changelog", "", true, "Should changelogs from pull requests be included.")
 	cmd.Flags().BoolVarP(&o.OverwriteCRD, "overwrite", "o", false, "overwrites the Release CRD YAML file if it exists")
 	cmd.Flags().BoolVarP(&o.GenerateCRD, "crd", "c", false, "Generate the CRD in the chart")
 	cmd.Flags().BoolVarP(&o.GenerateReleaseYaml, "generate-yaml", "y", false, "Generate the Release YAML in the local helm chart")
 	cmd.Flags().BoolVarP(&o.ConditionalRelease, "conditional-release", "", true, "Wrap the Release YAML in the helm Capabilities.APIVersions.Has if statement")
-	cmd.Flags().BoolVarP(&o.UpdateRelease, "update-release", "", true, "Should we update the release on the Git repository with the changelog")
+	cmd.Flags().BoolVarP(&o.UpdateRelease, "update-release", "", true, "Should we update the release on the Git repository with the changelog.")
 	cmd.Flags().BoolVarP(&o.NoReleaseInDev, "no-dev-release", "", false, "Disables the generation of Release CRDs in the development namespace to track releases being performed")
 	cmd.Flags().BoolVarP(&o.IncludeMergeCommits, "include-merge-commits", "", false, "Include merge commits when generating the changelog")
 	cmd.Flags().BoolVarP(&o.FailIfFindCommits, "fail-if-no-commits", "", false, "Do we want to fail the build if we don't find any commits to generate the changelog")
 	cmd.Flags().BoolVarP(&o.Draft, "draft", "", false, "The git provider release is marked as draft")
 	cmd.Flags().BoolVarP(&o.Prerelease, "prerelease", "", false, "The git provider release is marked as a pre-release")
+	defaultExcludeRegexp, ok := os.LookupEnv("CHANGELOG_EXCLUDE_REGEXP")
+	if !ok {
+		defaultExcludeRegexp = "^release "
+	}
+	cmd.Flags().StringVarP(&o.ExcludeRegexp, "exclude-regexp", "e", defaultExcludeRegexp, `Regexp for excluding commits. Can be set with environment variable CHANGELOG_EXCLUDE_REGEXP.`)
 
 	cmd.Flags().StringVarP(&o.Header, "header", "", "", "The changelog header in markdown for the changelog. Can use go template expressions on the ReleaseSpec object: https://golang.org/pkg/text/template/")
 	cmd.Flags().StringVarP(&o.HeaderFile, "header-file", "", "", "The file name of the changelog header in markdown for the changelog. Can use go template expressions on the ReleaseSpec object: https://golang.org/pkg/text/template/")
@@ -259,6 +266,12 @@ func (o *Options) Validate() error {
 
 	if o.ChangelogSeparator == "" {
 		o.ChangelogSeparator = "-----"
+	}
+	if o.ExcludeRegexp != "" {
+		o.CompiledExcludeRegexp, err = regexp.Compile(o.ExcludeRegexp)
+		if err != nil {
+			return errors.Wrapf(err, "invalid regexp for option --exclude-regexp")
+		}
 	}
 
 	return nil
@@ -404,27 +417,14 @@ func (o *Options) Run() error {
 			return err
 		}
 		log.Logger().Warnf("failed to find git commits between revision %s and %s due to: %s", previousRev, currentRev, err.Error())
-	}
-	if commits != nil {
-		commitSlice := *commits
-		if len(commitSlice) > 0 {
-			if strings.HasPrefix(commitSlice[0].Message, "release ") {
-				// remove the release commit from the log
-				tmp := commitSlice[1:]
-				commits = &tmp
-			}
-		}
-		if log.Logger().Logger.IsLevelEnabled(logrus.DebugLevel) {
-			log.Logger().Debugf("Found commits:")
-			if commits != nil {
-				for k := range *commits {
-					commit := (*commits)[k]
-					log.Logger().Debugf("  commit %s", commit.Hash)
-					log.Logger().Debugf("  Author: %s <%s>", commit.Author.Name, commit.Author.Email)
-					log.Logger().Debugf("  Date: %s", commit.Committer.When.Format(time.ANSIC))
-					log.Logger().Debugf("      %s\n\n\n", commit.Message)
-				}
-			}
+	} else if log.Logger().Logger.IsLevelEnabled(logrus.DebugLevel) {
+		log.Logger().Debugf("Found commits:")
+		for k := range *commits {
+			commit := (*commits)[k]
+			log.Logger().Debugf("  commit %s", commit.Hash)
+			log.Logger().Debugf("  Author: %s <%s>", commit.Author.Name, commit.Author.Email)
+			log.Logger().Debugf("  Date: %s", commit.Committer.When.Format(time.ANSIC))
+			log.Logger().Debugf("      %s\n\n\n", commit.Message)
 		}
 	}
 
@@ -470,7 +470,7 @@ func (o *Options) Run() error {
 	if commits != nil {
 		for k := range *commits {
 			c := (*commits)[k]
-			o.addCommit(&release.Spec, &c, &resolver)
+			o.addCommit(&release.Spec, &c, &resolver, o.CompiledExcludeRegexp)
 		}
 	}
 
@@ -761,8 +761,9 @@ func (o *Options) Git() gitclient.Interface {
 	return o.GitClient
 }
 
-func (o *Options) addCommit(spec *v1.ReleaseSpec, commit *object.Commit, resolver *users.GitUserResolver) {
-	if !(o.IncludeMergeCommits || o.IncludePRChangelog || len(commit.ParentHashes) <= 1) {
+func (o *Options) addCommit(spec *v1.ReleaseSpec, commit *object.Commit, resolver *users.GitUserResolver, excludeRegexp *regexp.Regexp) {
+	if (!(o.IncludeMergeCommits || o.IncludePRChangelog || len(commit.ParentHashes) <= 1)) ||
+		(excludeRegexp != nil && excludeRegexp.MatchString(commit.Message)) {
 		return
 	}
 	url := ""
