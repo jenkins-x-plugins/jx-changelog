@@ -20,17 +20,13 @@ func GetRevisionBeforeDateText(g gitclient.Interface, dir, dateText string) (str
 // GetCommitPointedToByLatestTag return the SHA of the commit pointed to by the latest git tag as well as the tag name
 // for the git repo in dir
 func GetCommitPointedToByLatestTag(g gitclient.Interface, dir, prefix string) (string, string, error) {
-	tagList, err := NTags(g, dir, 1, prefix)
+	tagSHA, tagName, err := NthTag(g, dir, 1, prefix)
 	if err != nil {
 		return "", "", errors.Wrapf(err, "getting commit pointed to by latest tag in %s", dir)
 	}
-	if len(tagList) == 0 {
-		return "", "", nil
+	if tagSHA == "" {
+		return tagSHA, tagName, nil
 	}
-	return GetCommitForTagSha(g, dir, tagList[0][0], tagList[0][1])
-}
-
-func GetCommitForTagSha(g gitclient.Interface, dir, tagSHA, tagName string) (string, string, error) {
 	commitSHA, err := g.Command(dir, "rev-list", "-n", "1", tagSHA)
 	if err != nil {
 		return "", "", errors.Wrapf(err, "running for git rev-list -n 1 %s", tagSHA)
@@ -38,9 +34,26 @@ func GetCommitForTagSha(g gitclient.Interface, dir, tagSHA, tagName string) (str
 	return commitSHA, tagName, err
 }
 
-// NTags return the SHA and tag name of n first tags in reverse chronological order from the repository at the given directory.
-// If N tags doesn't exist the available tags are returned without an error.
-func NTags(g gitclient.Interface, dir string, n int, prefix string) ([][]string, error) {
+// GetCommitPointedToByPreviousTag return the SHA of the commit pointed to by the latest-but-1 git tag as well as the tag
+// name for the git repo in dir
+func GetCommitPointedToByPreviousTag(g gitclient.Interface, dir, prefix string) (string, string, error) {
+	tagSHA, tagName, err := NthTag(g, dir, 2, prefix)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "getting commit pointed to by previous tag in %s", dir)
+	}
+	if tagSHA == "" {
+		return tagSHA, tagName, nil
+	}
+	commitSHA, err := g.Command(dir, "rev-list", "-n", "1", tagSHA)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "running for git rev-list -n 1 %s", tagSHA)
+	}
+	return commitSHA, tagName, err
+}
+
+// NthTag return the SHA and tag name of nth tag in reverse chronological order from the repository at the given directory.
+// If the nth tag does not exist empty strings without an error are returned.
+func NthTag(g gitclient.Interface, dir string, n int, prefix string) (string, string, error) {
 	args := []string{
 		"for-each-ref",
 		"--sort=-creatordate",
@@ -50,20 +63,22 @@ func NTags(g gitclient.Interface, dir string, n int, prefix string) ([][]string,
 	}
 	out, err := g.Command(dir, args...)
 	if err != nil {
-		return nil, errors.Wrapf(err, "running git %s", strings.Join(args, " "))
+		return "", "", errors.Wrapf(err, "running git %s", strings.Join(args, " "))
 	}
 
 	tagList := strings.Split(out, "\n")
-	res := make([][]string, len(tagList))
-	for i, tag := range tagList {
-		fields := strings.Split(tag, "\x00")
 
-		if len(fields) != 2 {
-			return nil, errors.Errorf("Unexpected format for returned tag and sha: '%s'", tagList[n-1])
-		}
-		res[i] = fields
+	if len(tagList) < n {
+		return "", "", nil
 	}
-	return res, nil
+
+	fields := strings.Split(tagList[n-1], "\x00")
+
+	if len(fields) != 2 {
+		return "", "", errors.Errorf("Unexpected format for returned tag and sha: '%s'", tagList[n-1])
+	}
+
+	return fields[0], fields[1], nil
 }
 
 // GetFirstCommitSha returns the sha of the first commit
