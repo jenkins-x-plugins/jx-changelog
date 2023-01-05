@@ -312,19 +312,20 @@ func (o *Options) Run() error {
 		if err != nil {
 			return errors.Wrapf(err, "getting tags in %s", dir)
 		}
-		for n := 1; n < len(tagList); n++ {
-			previousTag := tagList[n][1]
-			// We ignore tags without releases so changelogs for failed release builds isn't skipped
-			if o.UpdateRelease && scmClient.Releases != nil {
+		if o.UpdateRelease && scmClient.Releases != nil {
+			for n := 1; n < len(tagList); n++ {
+				previousTag := tagList[n][1]
+				// We ignore tags without releases so changelogs for failed release builds isn't skipped
 				// TODO: Should we care about the status of the release?
 				_, _, err = scmClient.Releases.FindByTag(ctx, fullName, previousTag)
 				if err != nil {
 					continue
 				}
-			}
-			previousRev, _, err = gits.GetCommitForTagSha(o.Git(), dir, tagList[n][0], previousTag)
-			if err != nil {
-				return err
+				previousRev, _, err = gits.GetCommitForTagSha(o.Git(), dir, tagList[n][0], previousTag)
+				if err != nil {
+					return err
+				}
+				break
 			}
 		}
 		if previousRev == "" {
