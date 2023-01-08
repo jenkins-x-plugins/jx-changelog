@@ -275,6 +275,9 @@ func (o *Options) Validate() error {
 			return errors.Wrapf(err, "invalid regexp for option --exclude-regexp")
 		}
 	}
+	if o.CommandRunner == nil {
+		o.CommandRunner = cmdrunner.QuietCommandRunner
+	}
 
 	return nil
 }
@@ -962,7 +965,7 @@ func (o *Options) getDependencyUpdates(previousRev string) ([]v1.DependencyUpdat
 		log.Logger().Debugf("file %s doesn't exists", absStatusPath)
 		return nil, nil
 	}
-	previousReleasesBlob, err := o.GitClient.Command(dir, "cat-file", "blob", previousRev+":"+o.StatusPath)
+	previousReleasesBlob, err := o.Git().Command(dir, "cat-file", "blob", previousRev+":"+o.StatusPath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "fail to check if %s exists for %s", o.StatusPath, previousRev)
 	}
