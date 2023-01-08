@@ -222,7 +222,7 @@ func NewCmdChangelogCreate() (*cobra.Command, *Options) {
 	cmd.Flags().StringVarP(&o.OutputMarkdownFile, "output-markdown", "", "", "Put the changelog output in this file")
 	cmd.Flags().StringVarP(&o.StatusPath, "status-path", "", filepath.Join("docs", "releases.yaml"), "The path to the deployment status file used to calculate dependency updates.")
 	cmd.Flags().StringVarP(&o.ChangelogSeparator, "changelog-separator", "", os.Getenv("CHANGELOG_SEPARATOR"), "the separator to use when splitting commit message from changelog in the pull request body. Default to ----- or if set the CHANGELOG_SEPARATOR environment variable")
-	cmd.Flags().StringVarP(&o.ChangelogSeparator, "changelog-output-separator", "", "-----", "the separator to use in changelog between changelogs from pull request bodies.")
+	cmd.Flags().StringVarP(&o.ChangelogOutputSeparator, "changelog-output-separator", "", "-----", "the separator to use in changelog between changelogs from pull request bodies.")
 	cmd.Flags().BoolVarP(&o.IncludePRChangelog, "include-changelog", "", true, "Should changelogs from pull requests be included.")
 	cmd.Flags().BoolVarP(&o.OverwriteCRD, "overwrite", "o", false, "overwrites the Release CRD YAML file if it exists")
 	cmd.Flags().BoolVarP(&o.GenerateCRD, "crd", "c", false, "Generate the CRD in the chart")
@@ -275,6 +275,9 @@ func (o *Options) Validate() error {
 			return errors.Wrapf(err, "invalid regexp for option --exclude-regexp")
 		}
 	}
+	if o.CommandRunner == nil {
+		o.CommandRunner = cmdrunner.QuietCommandRunner
+	}
 
 	return nil
 }
@@ -312,19 +315,20 @@ func (o *Options) Run() error {
 		if err != nil {
 			return errors.Wrapf(err, "getting tags in %s", dir)
 		}
-		for n := 1; n < len(tagList); n++ {
-			previousTag := tagList[n][1]
-			// We ignore tags without releases so changelogs for failed release builds isn't skipped
-			if o.UpdateRelease && scmClient.Releases != nil {
+		if o.UpdateRelease && scmClient.Releases != nil {
+			for n := 1; n < len(tagList); n++ {
+				previousTag := tagList[n][1]
+				// We ignore tags without releases so changelogs for failed release builds isn't skipped
 				// TODO: Should we care about the status of the release?
 				_, _, err = scmClient.Releases.FindByTag(ctx, fullName, previousTag)
 				if err != nil {
 					continue
 				}
-			}
-			previousRev, _, err = gits.GetCommitForTagSha(o.Git(), dir, tagList[n][0], previousTag)
-			if err != nil {
-				return err
+				previousRev, _, err = gits.GetCommitForTagSha(o.Git(), dir, tagList[n][0], previousTag)
+				if err != nil {
+					return err
+				}
+				break
 			}
 		}
 		if previousRev == "" {
@@ -961,7 +965,7 @@ func (o *Options) getDependencyUpdates(previousRev string) ([]v1.DependencyUpdat
 		log.Logger().Debugf("file %s doesn't exists", absStatusPath)
 		return nil, nil
 	}
-	previousReleasesBlob, err := o.GitClient.Command(dir, "cat-file", "blob", previousRev+":"+o.StatusPath)
+	previousReleasesBlob, err := o.Git().Command(dir, "cat-file", "blob", previousRev+":"+o.StatusPath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "fail to check if %s exists for %s", o.StatusPath, previousRev)
 	}
