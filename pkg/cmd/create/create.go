@@ -842,20 +842,20 @@ func (o *Options) addIssuesAndPullRequestsWithPattern(spec *v1.ReleaseSpec, comm
 			o.State.FoundIssueNames[result] = true
 			commit.IssueIDs = append(commit.IssueIDs, result)
 
-			user, err := resolver.Resolve(&issue.Author)
-			if err != nil {
-				log.Logger().Warnf("Failed to resolve user %v for issue %s repository %s", issue.Author, result, tracker.HomeURL())
-			}
-
-			var closedBy *v1.UserDetails
-			if issue.ClosedBy == nil {
-				log.Logger().Warnf("Failed to find closedBy user for issue %s repository %s", result, tracker.HomeURL())
-			} else {
-				u, err := resolver.Resolve(issue.ClosedBy)
+			var user *v1.UserDetails
+			if issues.GetIssueProvider(tracker) == issues.Git {
+				user, err = resolver.Resolve(&issue.Author)
 				if err != nil {
-					log.Logger().Warnf("Failed to resolve closedBy user %v for issue %s repository %s", issue.Author, result, tracker.HomeURL())
-				} else if u != nil {
-					closedBy = u
+					log.Logger().Warnf("Failed to resolve user %v for issue %s repository %s", issue.Author, result, tracker.HomeURL())
+				}
+			} else {
+				auth := &issue.Author
+				user = &v1.UserDetails{
+					Login:     auth.Login,
+					Name:      auth.Name,
+					Email:     auth.Email,
+					URL:       auth.Link,
+					AvatarURL: auth.Avatar,
 				}
 			}
 
@@ -878,7 +878,6 @@ func (o *Options) addIssuesAndPullRequestsWithPattern(spec *v1.ReleaseSpec, comm
 				Body:              issue.Body,
 				User:              user,
 				CreationTimestamp: kube.ToMetaTime(&issue.Created),
-				ClosedBy:          closedBy,
 				Assignees:         assignees,
 				Labels:            labels,
 			}

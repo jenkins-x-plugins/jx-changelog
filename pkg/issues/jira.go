@@ -120,11 +120,11 @@ func (i *JiraService) jiraToGitIssue(issue *jira.Issue) *scm.Issue {
 		answer.Body = fields.Description
 		// TODO: answer.Labels = gits.ToGitLabels(fields.Labels)
 		// TODO: answer.ClosedAt = jiraTimeToTimeP(fields.Resolutiondate)
-		user := jiraUserToGitUser(fields.Reporter)
+		user := i.jiraUserToGitUser(fields.Reporter)
 		if user != nil {
 			answer.Author = *user
 		}
-		assignee := jiraUserToGitUser(fields.Assignee)
+		assignee := i.jiraUserToGitUser(fields.Assignee)
 		if assignee != nil {
 			answer.Assignees = []scm.User{*assignee}
 		}
@@ -132,15 +132,15 @@ func (i *JiraService) jiraToGitIssue(issue *jira.Issue) *scm.Issue {
 	return answer
 }
 
-func jiraUserToGitUser(user *jira.User) *scm.User {
+func (i *JiraService) jiraUserToGitUser(user *jira.User) *scm.User {
 	if user == nil {
 		return nil
 	}
 	return &scm.User{
 		Avatar: jiraAvatarURL(user),
-		Name:   user.Name,
-		Login:  user.Key,
+		Name:   user.DisplayName,
 		Email:  user.EmailAddress,
+		Link:   stringhelpers.UrlJoin(i.ServerURL, "jira/people", user.AccountID),
 	}
 }
 
