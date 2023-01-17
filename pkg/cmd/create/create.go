@@ -822,80 +822,78 @@ func (o *Options) addIssuesAndPullRequests(spec *v1.ReleaseSpec, commit *v1.Comm
 }
 
 func (o *Options) addIssuesAndPullRequestsWithPattern(spec *v1.ReleaseSpec, commit *v1.CommitSummary, regex *regexp.Regexp, message string, tracker issues.IssueProvider) {
-	matches := regex.FindAllStringSubmatch(message, -1)
+	matches := regex.FindAllString(message, -1)
 
 	resolver := users.GitUserResolver{
 		GitProvider: o.ScmFactory.ScmClient,
 	}
-	for _, match := range matches {
-		for _, result := range match {
-			result = strings.TrimPrefix(result, "#")
-			if issueExists, ok := o.State.FoundIssueNames[result]; !ok {
-				o.State.FoundIssueNames[result] = false
-				issue, err := tracker.GetIssue(result)
-				if err != nil {
-					log.Logger().Warnf("Failed to lookup issue %s in issue tracker %s due to %s", result, tracker.HomeURL(), err)
-					continue
-				}
-				if issue == nil {
-					log.Logger().Warnf("Failed to find issue %s for repository %s", result, tracker.HomeURL())
-					continue
-				}
-				o.State.FoundIssueNames[result] = true
-				commit.IssueIDs = append(commit.IssueIDs, result)
-
-				user, err := resolver.Resolve(&issue.Author)
-				if err != nil {
-					log.Logger().Warnf("Failed to resolve user %v for issue %s repository %s", issue.Author, result, tracker.HomeURL())
-				}
-
-				var closedBy *v1.UserDetails
-				if issue.ClosedBy == nil {
-					log.Logger().Warnf("Failed to find closedBy user for issue %s repository %s", result, tracker.HomeURL())
-				} else {
-					u, err := resolver.Resolve(issue.ClosedBy)
-					if err != nil {
-						log.Logger().Warnf("Failed to resolve closedBy user %v for issue %s repository %s", issue.Author, result, tracker.HomeURL())
-					} else if u != nil {
-						closedBy = u
-					}
-				}
-
-				var assignees []v1.UserDetails
-				if issue.Assignees == nil {
-					log.Logger().Warnf("Failed to find assignees for issue %s repository %s", result, tracker.HomeURL())
-				} else {
-					u, err := resolver.GitUserSliceAsUserDetailsSlice(issue.Assignees)
-					if err != nil {
-						log.Logger().Warnf("Failed to resolve Assignees %v for issue %s repository %s", issue.Assignees, result, tracker.HomeURL())
-					}
-					assignees = u
-				}
-
-				labels := toV1Labels(issue.Labels)
-				issueSummary := v1.IssueSummary{
-					ID:                result,
-					URL:               issue.Link,
-					Title:             issue.Title,
-					Body:              issue.Body,
-					User:              user,
-					CreationTimestamp: kube.ToMetaTime(&issue.Created),
-					ClosedBy:          closedBy,
-					Assignees:         assignees,
-					Labels:            labels,
-				}
-				state := issue.State
-				if state != "" {
-					issueSummary.State = state
-				}
-				if issue.PullRequest {
-					spec.PullRequests = append(spec.PullRequests, issueSummary)
-				} else {
-					spec.Issues = append(spec.Issues, issueSummary)
-				}
-			} else if issueExists {
-				commit.IssueIDs = append(commit.IssueIDs, result)
+	for _, result := range matches {
+		result = strings.TrimPrefix(result, "#")
+		if issueExists, ok := o.State.FoundIssueNames[result]; !ok {
+			o.State.FoundIssueNames[result] = false
+			issue, err := tracker.GetIssue(result)
+			if err != nil {
+				log.Logger().Warnf("Failed to lookup issue %s in issue tracker %s due to %s", result, tracker.HomeURL(), err)
+				continue
 			}
+			if issue == nil {
+				log.Logger().Warnf("Failed to find issue %s for repository %s", result, tracker.HomeURL())
+				continue
+			}
+			o.State.FoundIssueNames[result] = true
+			commit.IssueIDs = append(commit.IssueIDs, result)
+
+			user, err := resolver.Resolve(&issue.Author)
+			if err != nil {
+				log.Logger().Warnf("Failed to resolve user %v for issue %s repository %s", issue.Author, result, tracker.HomeURL())
+			}
+
+			var closedBy *v1.UserDetails
+			if issue.ClosedBy == nil {
+				log.Logger().Warnf("Failed to find closedBy user for issue %s repository %s", result, tracker.HomeURL())
+			} else {
+				u, err := resolver.Resolve(issue.ClosedBy)
+				if err != nil {
+					log.Logger().Warnf("Failed to resolve closedBy user %v for issue %s repository %s", issue.Author, result, tracker.HomeURL())
+				} else if u != nil {
+					closedBy = u
+				}
+			}
+
+			var assignees []v1.UserDetails
+			if issue.Assignees == nil {
+				log.Logger().Warnf("Failed to find assignees for issue %s repository %s", result, tracker.HomeURL())
+			} else {
+				u, err := resolver.GitUserSliceAsUserDetailsSlice(issue.Assignees)
+				if err != nil {
+					log.Logger().Warnf("Failed to resolve Assignees %v for issue %s repository %s", issue.Assignees, result, tracker.HomeURL())
+				}
+				assignees = u
+			}
+
+			labels := toV1Labels(issue.Labels)
+			issueSummary := v1.IssueSummary{
+				ID:                result,
+				URL:               issue.Link,
+				Title:             issue.Title,
+				Body:              issue.Body,
+				User:              user,
+				CreationTimestamp: kube.ToMetaTime(&issue.Created),
+				ClosedBy:          closedBy,
+				Assignees:         assignees,
+				Labels:            labels,
+			}
+			state := issue.State
+			if state != "" {
+				issueSummary.State = state
+			}
+			if issue.PullRequest {
+				spec.PullRequests = append(spec.PullRequests, issueSummary)
+			} else {
+				spec.Issues = append(spec.Issues, issueSummary)
+			}
+		} else if issueExists {
+			commit.IssueIDs = stringhelpers.EnsureStringArrayContains(commit.IssueIDs, result)
 		}
 	}
 }
