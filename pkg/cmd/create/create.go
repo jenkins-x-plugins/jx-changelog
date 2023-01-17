@@ -830,8 +830,8 @@ func (o *Options) addIssuesAndPullRequestsWithPattern(spec *v1.ReleaseSpec, comm
 	for _, match := range matches {
 		for _, result := range match {
 			result = strings.TrimPrefix(result, "#")
-			if _, ok := o.State.FoundIssueNames[result]; !ok {
-				o.State.FoundIssueNames[result] = true
+			if issueExists, ok := o.State.FoundIssueNames[result]; !ok {
+				o.State.FoundIssueNames[result] = false
 				issue, err := tracker.GetIssue(result)
 				if err != nil {
 					log.Logger().Warnf("Failed to lookup issue %s in issue tracker %s due to %s", result, tracker.HomeURL(), err)
@@ -841,6 +841,8 @@ func (o *Options) addIssuesAndPullRequestsWithPattern(spec *v1.ReleaseSpec, comm
 					log.Logger().Warnf("Failed to find issue %s for repository %s", result, tracker.HomeURL())
 					continue
 				}
+				o.State.FoundIssueNames[result] = true
+				commit.IssueIDs = append(commit.IssueIDs, result)
 
 				user, err := resolver.Resolve(&issue.Author)
 				if err != nil {
@@ -871,7 +873,6 @@ func (o *Options) addIssuesAndPullRequestsWithPattern(spec *v1.ReleaseSpec, comm
 				}
 
 				labels := toV1Labels(issue.Labels)
-				commit.IssueIDs = append(commit.IssueIDs, result)
 				issueSummary := v1.IssueSummary{
 					ID:                result,
 					URL:               issue.Link,
@@ -892,6 +893,8 @@ func (o *Options) addIssuesAndPullRequestsWithPattern(spec *v1.ReleaseSpec, comm
 				} else {
 					spec.Issues = append(spec.Issues, issueSummary)
 				}
+			} else if issueExists {
+				commit.IssueIDs = append(commit.IssueIDs, result)
 			}
 		}
 	}
