@@ -234,10 +234,10 @@ func describeIssue(info *giturl.GitRepository, issue *v1.IssueSummary) string {
 	return "* " + describeIssueShort(issue) + issue.Title + describeUser(info, issue.User) + "\n"
 }
 
-func pullRequestChangelog(issue *v1.IssueSummary, separator, outputseparator string) string {
+func pullRequestChangelog(issue *v1.IssueSummary, separator, outputSeparator string) string {
 	parts := strings.SplitN(issue.Body, separator, 2)
 	if len(parts) == 2 {
-		return "\n" + outputseparator + "\n" + parts[1]
+		return "\n" + outputSeparator + "\n" + parts[1]
 	}
 	return ""
 }
