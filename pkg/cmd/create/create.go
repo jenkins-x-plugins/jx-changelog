@@ -813,12 +813,11 @@ func (o *Options) addIssuesAndPullRequests(spec *v1.ReleaseSpec, commit *v1.Comm
 		o.State.LoggedIssueKind = true
 		log.Logger().Infof("Finding issues in commit messages using %s format", issueKind)
 	}
-	message := fullCommitMessageText(rawCommit)
 	if issueKind == issues.Jira {
-		o.addIssuesAndPullRequestsWithPattern(spec, commit, JIRAIssueRegex, message, tracker)
+		o.addIssuesAndPullRequestsWithPattern(spec, commit, JIRAIssueRegex, rawCommit.Message, tracker)
 	}
 
-	o.addIssuesAndPullRequestsWithPattern(spec, commit, GitHubIssueRegex, message, tracker)
+	o.addIssuesAndPullRequestsWithPattern(spec, commit, GitHubIssueRegex, rawCommit.Message, tracker)
 }
 
 func (o *Options) addIssuesAndPullRequestsWithPattern(spec *v1.ReleaseSpec, commit *v1.CommitSummary, regex *regexp.Regexp, message string, tracker issues.IssueProvider) {
@@ -906,23 +905,6 @@ func toV1Labels(labels []string) []v1.IssueLabel {
 			Name: label,
 		})
 	}
-	return answer
-}
-
-// fullCommitMessageText returns the commit message
-func fullCommitMessageText(commit *object.Commit) string {
-	answer := commit.Message
-	fn := func(parent *object.Commit) {
-		text := parent.Message
-		if text != "" {
-			sep := "\n"
-			if strings.HasSuffix(answer, "\n") {
-				sep = ""
-			}
-			answer += sep + text
-		}
-	}
-	fn(commit)
 	return answer
 }
 
