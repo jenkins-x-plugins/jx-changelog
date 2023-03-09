@@ -212,7 +212,7 @@ func NewCmdChangelogCreate() (*cobra.Command, *Options) {
 
 	cmd.Flags().StringVarP(&o.PreviousRevision, "previous-rev", "p", "", "the revision to start changelog from")
 	cmd.Flags().StringVarP(&o.PreviousDate, "previous-date", "", "", "the date to start changelog from in format 'MonthName dayNumber year'")
-	cmd.Flags().StringVarP(&o.CurrentRevision, "rev", "", "", "the revision end changelog in")
+	cmd.Flags().StringVarP(&o.CurrentRevision, "rev", "", "", "the revision to end changelog at")
 	cmd.Flags().StringVarP(&o.TagPrefix, "tag-prefix", "", "", "prefix to filter on when searching for version tags")
 	cmd.Flags().StringVarP(&o.TemplatesDir, "templates-dir", "t", "", "the directory containing the helm chart templates to generate the resources")
 	cmd.Flags().StringVarP(&o.ReleaseYamlFile, "release-yaml-file", "", "release.yaml", "the name of the file to generate the Release YAML")
