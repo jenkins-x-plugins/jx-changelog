@@ -210,14 +210,14 @@ func NewCmdChangelogCreate() (*cobra.Command, *Options) {
 	}
 	o.ScmFactory.DiscoverFromGit = true
 
-	cmd.Flags().StringVarP(&o.PreviousRevision, "previous-rev", "p", "", "the previous tag revision")
-	cmd.Flags().StringVarP(&o.PreviousDate, "previous-date", "", "", "the previous date to find a revision in format 'MonthName dayNumber year'")
-	cmd.Flags().StringVarP(&o.CurrentRevision, "rev", "", "", "the current tag revision")
+	cmd.Flags().StringVarP(&o.PreviousRevision, "previous-rev", "p", "", "the revision to start changelog from")
+	cmd.Flags().StringVarP(&o.PreviousDate, "previous-date", "", "", "the date to start changelog from in format 'MonthName dayNumber year'")
+	cmd.Flags().StringVarP(&o.CurrentRevision, "rev", "", "", "the revision to end changelog at")
 	cmd.Flags().StringVarP(&o.TagPrefix, "tag-prefix", "", "", "prefix to filter on when searching for version tags")
 	cmd.Flags().StringVarP(&o.TemplatesDir, "templates-dir", "t", "", "the directory containing the helm chart templates to generate the resources")
 	cmd.Flags().StringVarP(&o.ReleaseYamlFile, "release-yaml-file", "", "release.yaml", "the name of the file to generate the Release YAML")
 	cmd.Flags().StringVarP(&o.CrdYamlFile, "crd-yaml-file", "", "release-crd.yaml", "the name of the file to generate the Release CustomResourceDefinition YAML")
-	cmd.Flags().StringVarP(&o.Version, "version", "v", "", "The version to release. If you specify --rev it is mandatory and needs to be a tag name to be able to add changelog release at git provider")
+	cmd.Flags().StringVarP(&o.Version, "version", "v", "", "The version to release. Used to find the git tag to generate the changelog for and as title for the release")
 	cmd.Flags().StringVarP(&o.Build, "build", "", "", "The Build number which is used to update the PipelineActivity. If not specified its defaulted from the '$BUILD_NUMBER' environment variable")
 	cmd.Flags().StringVarP(&o.OutputMarkdownFile, "output-markdown", "", "", "Put the changelog output in this file")
 	cmd.Flags().StringVarP(&o.StatusPath, "status-path", "", filepath.Join("docs", "releases.yaml"), "The path to the deployment status file used to calculate dependency updates.")
@@ -351,17 +351,24 @@ func (o *Options) Run() error {
 			}
 		}
 	}
-	currentRev := o.CurrentRevision
+	currentRev, tagName, err := gits.GetCommitPointedToByLatestTag(o.Git(), dir, o.TagPrefix)
+	if err != nil {
+		return err
+	}
+	if o.CurrentRevision != "" {
+		currentRev = o.CurrentRevision
+	}
+	prefix := "v"
+	if o.TagPrefix != "" {
+		prefix = o.TagPrefix
+	}
 	version := o.Version
-	tagName := version
-	if currentRev == "" {
-		currentRev, tagName, err = gits.GetCommitPointedToByLatestTag(o.Git(), dir, o.TagPrefix)
-		if err != nil {
-			return err
-		}
-		if version == "" {
-			version = tagName
-		}
+	if version != "" && version != tagName && prefix+version != tagName {
+		log.Logger().Warnf("version %s does not match the latest tag %s. Will tag head of default branch with version", info(version), info(tagName))
+		tagName = version
+	}
+	if version == "" {
+		version = tagName
 	}
 
 	templatesDir := o.TemplatesDir
@@ -434,10 +441,6 @@ func (o *Options) Run() error {
 		}
 	}
 
-	prefix := "v"
-	if o.TagPrefix != "" {
-		prefix = o.TagPrefix
-	}
 	version = strings.TrimPrefix(version, prefix)
 	specVersion := version
 	if specVersion == "" {
