@@ -20,7 +20,11 @@ spec:
           name: ""
           resources: {}
         - name: make-lint
-          resources: {}
+          resources:
+            # override requests for the pod here
+            requests:
+              cpu: 1400m
+              memory: 4400Mi
   podTemplate: {}
   serviceAccountName: tekton-bot
   timeout: 30m0s
