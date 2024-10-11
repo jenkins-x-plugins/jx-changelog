@@ -888,7 +888,7 @@ func (o *Options) addIssuesAndPullRequestsWithPattern(spec *v1.ReleaseSpec, comm
 			if state != "" {
 				issueSummary.State = state
 			}
-			if issue.PullRequest {
+			if issue.PullRequest != nil {
 				spec.PullRequests = append(spec.PullRequests, issueSummary)
 			} else {
 				spec.Issues = append(spec.Issues, issueSummary)

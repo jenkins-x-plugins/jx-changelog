@@ -245,8 +245,8 @@ func pullRequestChangelog(issue *v1.IssueSummary, separator, outputSeparator str
 func describeIssueShort(issue *v1.IssueSummary) string {
 	prefix := ""
 	id := issue.ID
-	if len(id) > 0 {
-		// lets only add the hash prefix for numeric ids
+	if id != "" {
+		// let's only add the hash prefix for numeric ids
 		_, err := strconv.Atoi(id)
 		if err == nil {
 			prefix = "#"
