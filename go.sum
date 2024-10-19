@@ -38,8 +38,8 @@ github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 h1:0CwZNZbxp69SHPd
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5/go.mod h1:wHh0iHkYZB8zMSxRWpUBQtwG5a7fFgvEO+odwuTv2gs=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
-github.com/bluekeyes/go-gitdiff v0.7.4 h1:pKFVC/HCQckkBTqhQPc5osCXdDylYwjOGHnV0FUi43g=
-github.com/bluekeyes/go-gitdiff v0.7.4/go.mod h1:QpfYYO1E0fTVHVZAZKiRjtSGY9823iCdvGXBcEzHGbM=
+github.com/bluekeyes/go-gitdiff v0.8.0 h1:Nn1wfw3/XeKoc3lWk+2bEXGUHIx36kj80FM1gVcBk+o=
+github.com/bluekeyes/go-gitdiff v0.8.0/go.mod h1:WWAk1Mc6EgWarCrPFO+xeYlujPu98VuLW3Tu+B/85AE=
 github.com/cenkalti/backoff v2.2.1+incompatible h1:tNowT99t7UNflLxfYYSlKYsBpXdEet03Pg2g16Swow4=
 github.com/cenkalti/backoff v2.2.1+incompatible/go.mod h1:90ReRw6GdpyfrHakVjL/QHaoyV4aDUVVkXQJJJ3NXXM=
 github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
@@ -172,8 +172,8 @@ github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 h1:BQSFePA1RWJOl
 github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99/go.mod h1:1lJo3i6rXxKeerYnT8Nvf0QmHCRC1n8sfWVwXF2Frvo=
 github.com/jenkins-x-plugins/jx-gitops v0.21.5 h1:GBbLJwjBwxo19l9exPzv6tj5EQr5Vl2GUjIFWxfhicE=
 github.com/jenkins-x-plugins/jx-gitops v0.21.5/go.mod h1:TtH8fuekODYmNi2Oz7IJZSllUv0KK10OOLfDOLT3ixg=
-github.com/jenkins-x/go-scm v1.14.42 h1:vl9RqOuExAv/vYd7nHe6acFG5+G8c+Q81AQAgHydX3U=
-github.com/jenkins-x/go-scm v1.14.42/go.mod h1:7cSGSQ1HBujxTIWylov0JYvsyNc506cTe/xqzKSQuCk=
+github.com/jenkins-x/go-scm v1.14.43 h1:hhFivDj28dVEDzcI6S07z6hZRK1speL8P1A3SWuF9i0=
+github.com/jenkins-x/go-scm v1.14.43/go.mod h1:Rkk6rQeOzDDIvQRcwiFzTkBHPX1/fOVmSlxE9sqSJWM=
 github.com/jenkins-x/jx-api/v4 v4.7.6 h1:+SJwYn/uF7CwbC5cD399zLjcM+VEgJMS89QL8ixa0WY=
 github.com/jenkins-x/jx-api/v4 v4.7.6/go.mod h1:qBBQ+CUsclk9O8vV0dksPpyKgS0wXe7O/3Tzm9xxRiA=
 github.com/jenkins-x/jx-helpers/v3 v3.7.1 h1:jf1R6ndNRF1YmyKX2r6V0n6X7i5EqfdulMJPLuO507k=

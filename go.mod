@@ -8,7 +8,7 @@ require (
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/imdario/mergo v0.3.16
 	github.com/jenkins-x-plugins/jx-gitops v0.21.5
-	github.com/jenkins-x/go-scm v1.14.42
+	github.com/jenkins-x/go-scm v1.14.43
 	github.com/jenkins-x/jx-api/v4 v4.7.6
 	github.com/jenkins-x/jx-helpers/v3 v3.7.1
 	github.com/jenkins-x/jx-logging/v3 v3.0.16
@@ -34,7 +34,7 @@ require (
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/Masterminds/semver/v3 v3.2.1 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/bluekeyes/go-gitdiff v0.7.4 // indirect
+	github.com/bluekeyes/go-gitdiff v0.8.0 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
