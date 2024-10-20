@@ -10,8 +10,8 @@ require (
 	github.com/jenkins-x-plugins/jx-gitops v0.21.5
 	github.com/jenkins-x/go-scm v1.14.43
 	github.com/jenkins-x/jx-api/v4 v4.7.6
-	github.com/jenkins-x/jx-helpers/v3 v3.7.1
-	github.com/jenkins-x/jx-logging/v3 v3.0.16
+	github.com/jenkins-x/jx-helpers/v3 v3.8.1
+	github.com/jenkins-x/jx-logging/v3 v3.0.17
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
