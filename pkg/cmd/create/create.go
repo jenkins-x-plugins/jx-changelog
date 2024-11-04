@@ -1029,6 +1029,9 @@ func isReleaseNotFound(err error, gitKind string) bool {
 	}
 }
 
+// The code below is taken from https://github.com/antham/chyle/blob/master/chyle/git/git.go#L3
+// Unfortunately it can't be imported since it uses an outdated version of go-git.
+
 // node is a tree node in commit tree
 type node struct {
 	value  *object.Commit
@@ -1052,7 +1055,7 @@ type errRepositoryPath struct {
 }
 
 func (e errRepositoryPath) Error() string {
-	return fmt.Sprintf(`check "%s" is an existing git repository path`, e.path)
+	return fmt.Sprintf(`check %q is an existing git repository path`, e.path)
 }
 
 // errReferenceNotFound is triggered when reference can't be
@@ -1062,14 +1065,14 @@ type errReferenceNotFound struct {
 }
 
 func (e errReferenceNotFound) Error() string {
-	return fmt.Sprintf(`reference "%s" can't be found in git repository`, e.ref)
+	return fmt.Sprintf(`reference %q can't be found in git repository`, e.ref)
 }
 
 // errBrowsingTree is triggered when something wrong occurred during commit analysis process
 var errBrowsingTree = fmt.Errorf("an issue occurred during tree analysis")
 
 // FetchCommits retrieves commits in a reference range
-func FetchCommits(repoPath string, fromRef string, toRef string) (*[]object.Commit, error) {
+func FetchCommits(repoPath, fromRef, toRef string) (*[]object.Commit, error) {
 	rep, err := git.PlainOpen(repoPath)
 
 	if err != nil {
@@ -1101,7 +1104,7 @@ func FetchCommits(repoPath string, fromRef string, toRef string) (*[]object.Comm
 		return nil, errNoDiffBetweenReferences{fromRef, toRef}
 	}
 
-	commits, err = findDiffCommits(toCommit, &exclusionList)
+	commits, err = findDiffCommits(toCommit, exclusionList)
 
 	if err != nil {
 		return nil, err
@@ -1118,7 +1121,7 @@ func FetchCommits(repoPath string, fromRef string, toRef string) (*[]object.Comm
 func resolveRef(refCommit string, repository *git.Repository) (*object.Commit, error) {
 	hash := plumbing.Hash{}
 
-	if strings.ToLower(refCommit) == "head" {
+	if strings.EqualFold(refCommit, "head") {
 		head, err := repository.Head()
 
 		if err == nil {
@@ -1184,7 +1187,7 @@ func buildOriginCommitList(commit *object.Commit) (map[string]bool, error) {
 
 // findDiffCommits extracts commits that are no part of a given commit list
 // using kind of depth first search algorithm to keep commits ordered
-func findDiffCommits(commit *object.Commit, exclusionList *map[string]bool) (*[]object.Commit, error) {
+func findDiffCommits(commit *object.Commit, exclusionList map[string]bool) (*[]object.Commit, error) {
 	commits := []object.Commit{}
 	queue := append([]*node{}, &node{value: commit})
 	seen := map[string]bool{commit.ID().String(): true}
@@ -1194,7 +1197,7 @@ func findDiffCommits(commit *object.Commit, exclusionList *map[string]bool) (*[]
 		current = queue[0]
 		queue = append([]*node{}, queue[1:]...)
 
-		if _, ok := (*exclusionList)[current.value.ID().String()]; !ok {
+		if _, ok := exclusionList[current.value.ID().String()]; !ok {
 			commits = append(commits, *(current.value))
 		}
 
