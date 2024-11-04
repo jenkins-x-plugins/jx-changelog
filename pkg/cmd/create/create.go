@@ -43,12 +43,14 @@ import (
 
 	"github.com/ghodss/yaml"
 
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	jenkinsio "github.com/jenkins-x/jx-api/v4/pkg/apis/jenkins.io"
 	v1 "github.com/jenkins-x/jx-api/v4/pkg/apis/jenkins.io/v1"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/options"
 	"github.com/jenkins-x/jx-logging/v3/pkg/log"
 	"github.com/spf13/cobra"
-	"gopkg.in/src-d/go-git.v4/plumbing/object"
 
 	chgit "github.com/antham/chyle/chyle/git"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -422,7 +424,7 @@ func (o *Options) Run() error {
 
 	o.State.FoundIssueNames = map[string]bool{}
 
-	commits, err := chgit.FetchCommits(gitDir, previousRev, currentRev)
+	commits, err := FetchCommits(gitDir, previousRev, currentRev)
 	if err != nil {
 		if o.FailIfFindCommits {
 			return err
