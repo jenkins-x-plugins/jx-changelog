@@ -2,7 +2,6 @@ module github.com/jenkins-x-plugins/jx-changelog
 
 require (
 	github.com/andygrunwald/go-jira v1.16.0
-	github.com/antham/chyle v1.11.0
 	github.com/cpuguy83/go-md2man v1.0.10
 	github.com/emirpasic/gods v1.18.1
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
