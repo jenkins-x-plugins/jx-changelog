@@ -41,8 +41,6 @@ import (
 	"github.com/jenkins-x/jx-helpers/v3/pkg/kube"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/kube/naming"
 
-	"github.com/pkg/errors"
-
 	"github.com/ghodss/yaml"
 
 	jenkinsio "github.com/jenkins-x/jx-api/v4/pkg/apis/jenkins.io"
@@ -253,17 +251,17 @@ func NewCmdChangelogCreate() (*cobra.Command, *Options) {
 func (o *Options) Validate() error {
 	err := o.BaseOptions.Validate()
 	if err != nil {
-		return errors.Wrapf(err, "failed to validate base options")
+		return fmt.Errorf("failed to validate base options: %w", err)
 	}
 
 	err = o.ScmFactory.Validate()
 	if err != nil {
-		return errors.Wrapf(err, "failed to discover git repository")
+		return fmt.Errorf("failed to discover git repository: %w", err)
 	}
 
 	o.JXClient, o.Namespace, err = jxclient.LazyCreateJXClientAndNamespace(o.JXClient, o.Namespace)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create jx client")
+		return fmt.Errorf("failed to create jx client: %w", err)
 	}
 
 	if o.ChangelogSeparator == "" {
@@ -272,7 +270,7 @@ func (o *Options) Validate() error {
 	if o.ExcludeRegexp != "" {
 		o.CompiledExcludeRegexp, err = regexp.Compile(o.ExcludeRegexp)
 		if err != nil {
-			return errors.Wrapf(err, "invalid regexp for option --exclude-regexp")
+			return fmt.Errorf("invalid regexp for option --exclude-regexp: %w", err)
 		}
 	}
 	if o.CommandRunner == nil {
@@ -285,7 +283,7 @@ func (o *Options) Validate() error {
 func (o *Options) Run() error {
 	err := o.Validate()
 	if err != nil {
-		return errors.Wrapf(err, "failed to validate")
+		return fmt.Errorf("failed to validate: %w", err)
 	}
 
 	// lets enable batch mode if we detect we are inside a pipeline
@@ -302,7 +300,7 @@ func (o *Options) Run() error {
 		if previousDate != "" {
 			previousRev, err = gits.GetRevisionBeforeDateText(o.Git(), dir, previousDate)
 			if err != nil {
-				return errors.Wrapf(err, "failed to find commits before date %s", previousDate)
+				return fmt.Errorf("failed to find commits before date %s: %w", previousDate, err)
 			}
 		}
 	}
@@ -313,7 +311,7 @@ func (o *Options) Run() error {
 	if previousRev == "" {
 		tagList, err := gits.NTags(o.Git(), dir, 11, o.TagPrefix)
 		if err != nil {
-			return errors.Wrapf(err, "getting tags in %s", dir)
+			return fmt.Errorf("getting tags in %s: %w", dir, err)
 		}
 		if o.UpdateRelease && scmClient.Releases != nil {
 			for n := 1; n < len(tagList); n++ {
@@ -342,7 +340,7 @@ func (o *Options) Run() error {
 				// let's assume we are the first release
 				previousRev, err = gits.GetFirstCommitSha(o.Git(), dir)
 				if err != nil {
-					return errors.Wrap(err, "failed to find first commit after we found no previous releaes")
+					return fmt.Errorf("failed to find first commit after we found no previous releaes: %w", err)
 				}
 				if previousRev == "" {
 					log.Logger().Info("no previous commit version found so change diff unavailable")
@@ -375,7 +373,7 @@ func (o *Options) Run() error {
 	if templatesDir == "" {
 		chartFile, err := helmhelpers.FindChart(dir)
 		if err != nil {
-			return errors.Wrap(err, "could not find helm chart")
+			return fmt.Errorf("could not find helm chart: %w", err)
 		}
 		if chartFile == "" {
 			log.Logger().Infof("no chart directory found in %s", dir)
@@ -393,7 +391,7 @@ func (o *Options) Run() error {
 	if templatesDir != "" {
 		err = os.MkdirAll(templatesDir, files.DefaultDirWritePermissions)
 		if err != nil {
-			return errors.Wrapf(err, "failed to create the templates directory %s", templatesDir)
+			return fmt.Errorf("failed to create the templates directory %s: %w", templatesDir, err)
 		}
 	}
 
@@ -412,7 +410,7 @@ func (o *Options) Run() error {
 	if gitInfo == nil {
 		gitInfo, err = giturl.ParseGitURL(o.ScmFactory.SourceURL)
 		if err != nil {
-			return errors.Wrapf(err, "failed to parse git URL %s", o.ScmFactory.SourceURL)
+			return fmt.Errorf("failed to parse git URL %s: %w", o.ScmFactory.SourceURL, err)
 		}
 	}
 
@@ -525,7 +523,7 @@ func (o *Options) Run() error {
 				rel = nil
 			}
 			if err != nil {
-				return errors.Wrapf(err, "failed to query release on repo %s for tag %s", fullName, tagName)
+				return fmt.Errorf("failed to query release on repo %s for tag %s: %w", fullName, tagName, err)
 			}
 
 			if rel == nil {
@@ -585,7 +583,7 @@ func (o *Options) Run() error {
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "failed to unmarshal Release")
+		return fmt.Errorf("failed to unmarshal Release: %w", err)
 	}
 	if data == nil {
 		return fmt.Errorf("could not marshal release to yaml")
@@ -597,25 +595,25 @@ func (o *Options) Run() error {
 		if o.GenerateReleaseYaml {
 			err = os.WriteFile(releaseFile, data, files.DefaultFileWritePermissions)
 			if err != nil {
-				return errors.Wrapf(err, "failed to save Release YAML file %s", releaseFile)
+				return fmt.Errorf("failed to save Release YAML file %s: %w", releaseFile, err)
 			}
 			log.Logger().Infof("generated: %s", info(releaseFile))
 		}
 		if o.GenerateCRD {
 			exists, err := files.FileExists(crdFile)
 			if err != nil {
-				return errors.Wrapf(err, "failed to check for CRD YAML file %s", crdFile)
+				return fmt.Errorf("failed to check for CRD YAML file %s: %w", crdFile, err)
 			}
 			if o.OverwriteCRD || !exists {
 				err = os.WriteFile(crdFile, []byte(ReleaseCrdYaml), files.DefaultFileWritePermissions)
 				if err != nil {
-					return errors.Wrapf(err, "failed to save Release CRD YAML file %s", crdFile)
+					return fmt.Errorf("failed to save Release CRD YAML file %s: %w", crdFile, err)
 				}
 				log.Logger().Infof("generated: %s", info(crdFile))
 
 				err = gitclient.Add(o.Git(), templatesDir)
 				if err != nil {
-					return errors.Wrapf(err, "failed to git add in dir %s", templatesDir)
+					return fmt.Errorf("failed to git add in dir %s: %w", templatesDir, err)
 				}
 			}
 		}
@@ -647,7 +645,7 @@ func (o *Options) Run() error {
 		return updated, nil
 	})
 	if err != nil {
-		return errors.Wrapf(err, "failed to update PipelineActivity")
+		return fmt.Errorf("failed to update PipelineActivity: %w", err)
 	}
 	return nil
 }
@@ -665,7 +663,7 @@ func FindIssueTracker(g gitclient.Interface, jxClient jxc.Interface, ns, dir, ow
 	requirementsConfig, _, err := jxcore.LoadRequirementsConfig(clusterDir, false)
 	var reqIssueTracker *jxcore.IssueTracker
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot load requirements config file")
+		return nil, fmt.Errorf("cannot load requirements config file: %w", err)
 	}
 	if requirementsConfig != nil && !requirementsConfig.Spec.IsEmpty() {
 		reqIssueTracker = requirementsConfig.Spec.Cluster.IssueTracker
@@ -676,7 +674,7 @@ func FindIssueTracker(g gitclient.Interface, jxClient jxc.Interface, ns, dir, ow
 		if issueTracker != nil {
 			err = mergo.Merge(reqIssueTracker, issueTracker, mergo.WithOverride)
 			if err != nil {
-				return nil, errors.Wrap(err, "error merging requirements.spec.cluster Destination from settings")
+				return nil, fmt.Errorf("error merging requirements.spec.cluster Destination from settings: %w", err)
 			}
 		}
 		return reqIssueTracker, nil
@@ -719,12 +717,12 @@ func (o *Options) updatePipelineActivity(fn func(activity *v1.PipelineActivity) 
 		for i := 0; i < 3; i++ {
 			a, _, err := key.GetOrCreate(o.JXClient, o.Namespace)
 			if err != nil {
-				return errors.Wrapf(err, "failed to get PipelineActivity")
+				return fmt.Errorf("failed to get PipelineActivity: %w", err)
 			}
 
 			updated, err := fn(a)
 			if err != nil {
-				return errors.Wrapf(err, "failed to update PipelineActivit %s", name)
+				return fmt.Errorf("failed to update PipelineActivit %s: %w", name, err)
 			}
 			if !updated {
 				return nil
@@ -952,18 +950,18 @@ func (o *Options) getDependencyUpdates(previousRev string) ([]v1.DependencyUpdat
 	}
 	previousReleasesBlob, err := o.Git().Command(dir, "cat-file", "blob", previousRev+":"+o.StatusPath)
 	if err != nil {
-		return nil, errors.Wrapf(err, "fail to check if %s exists for %s", o.StatusPath, previousRev)
+		return nil, fmt.Errorf("fail to check if %s exists for %s: %w", o.StatusPath, previousRev, err)
 	}
 	var previousReleases []*releasereport.NamespaceReleases
 	err = yaml.Unmarshal([]byte(previousReleasesBlob), &previousReleases)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal previous releases %s", previousRev)
+		return nil, fmt.Errorf("failed to unmarshal previous releases %s: %w", previousRev, err)
 	}
 
 	var currentReleases []*releasereport.NamespaceReleases
 	err = yamls.LoadFile(absStatusPath, &currentReleases)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to load %s", o.StatusPath)
+		return nil, fmt.Errorf("failed to load %s: %w", o.StatusPath, err)
 	}
 
 	previousReleasesMap := makeReleaseMap(&previousReleases)

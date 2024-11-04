@@ -8,9 +8,8 @@ import (
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/kube/naming"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/scmhelpers"
-	"github.com/pkg/errors"
 
-	"gopkg.in/src-d/go-git.v4/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing/object"
 
 	jenkinsv1 "github.com/jenkins-x/jx-api/v4/pkg/apis/jenkins.io/v1"
 )
@@ -70,7 +69,7 @@ func (r *GitUserResolver) Resolve(user *scm.User) (*jenkinsv1.UserDetails, error
 		u = r.GitUserToUser(user)
 		err := r.cache.CreateOrUpdateUser(u)
 		if err != nil {
-			return u, errors.Wrapf(err, "failed to cache User")
+			return u, fmt.Errorf("failed to cache User: %w", err)
 		}
 		return u, nil
 	}
@@ -80,7 +79,7 @@ func (r *GitUserResolver) Resolve(user *scm.User) (*jenkinsv1.UserDetails, error
 		return nil, nil
 	}
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to find user %s", user.Login)
+		return nil, fmt.Errorf("failed to find user %s: %w", user.Login, err)
 	}
 
 	u = r.GitUserToUser(scmUser)
@@ -93,7 +92,7 @@ func (r *GitUserResolver) Resolve(user *scm.User) (*jenkinsv1.UserDetails, error
 	u.Name = naming.ToValidName(id)
 	err = r.cache.CreateOrUpdateUser(u)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create User")
+		return nil, fmt.Errorf("failed to create User: %w", err)
 	}
 	return u, nil
 }

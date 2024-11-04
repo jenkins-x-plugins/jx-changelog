@@ -10,7 +10,6 @@ import (
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/stringhelpers"
 	"github.com/jenkins-x/jx-logging/v3/pkg/log"
-	"github.com/pkg/errors"
 )
 
 type JiraService struct {
@@ -78,7 +77,7 @@ func (i *JiraService) SearchIssuesClosedSince(_ time.Time) ([]*scm.Issue, error)
 func (i *JiraService) CreateIssue(issue *scm.Issue) (*scm.Issue, error) {
 	project, _, err := i.JiraClient.Project.Get(i.Project)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not find project %s", i.Project)
+		return nil, fmt.Errorf("could not find project %s: %w", i.Project, err)
 	}
 	ji := i.gitToJiraIssue(issue)
 	issueTypes := project.IssueTypes
@@ -96,7 +95,7 @@ func (i *JiraService) CreateIssue(issue *scm.Issue) (*scm.Issue, error) {
 			}
 		}
 		msg := buf.String()
-		return nil, errors.Wrapf(err, "failed to create issue: %s", msg)
+		return nil, fmt.Errorf("failed to create issue: %s: %w", msg, err)
 	}
 	return i.jiraToGitIssue(created), nil
 }
