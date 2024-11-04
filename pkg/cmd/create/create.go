@@ -41,18 +41,17 @@ import (
 	"github.com/jenkins-x/jx-helpers/v3/pkg/kube"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/kube/naming"
 
-	"github.com/pkg/errors"
-
 	"github.com/ghodss/yaml"
 
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	jenkinsio "github.com/jenkins-x/jx-api/v4/pkg/apis/jenkins.io"
 	v1 "github.com/jenkins-x/jx-api/v4/pkg/apis/jenkins.io/v1"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/options"
 	"github.com/jenkins-x/jx-logging/v3/pkg/log"
 	"github.com/spf13/cobra"
-	"gopkg.in/src-d/go-git.v4/plumbing/object"
 
-	chgit "github.com/antham/chyle/chyle/git"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -253,17 +252,17 @@ func NewCmdChangelogCreate() (*cobra.Command, *Options) {
 func (o *Options) Validate() error {
 	err := o.BaseOptions.Validate()
 	if err != nil {
-		return errors.Wrapf(err, "failed to validate base options")
+		return fmt.Errorf("failed to validate base options: %w", err)
 	}
 
 	err = o.ScmFactory.Validate()
 	if err != nil {
-		return errors.Wrapf(err, "failed to discover git repository")
+		return fmt.Errorf("failed to discover git repository: %w", err)
 	}
 
 	o.JXClient, o.Namespace, err = jxclient.LazyCreateJXClientAndNamespace(o.JXClient, o.Namespace)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create jx client")
+		return fmt.Errorf("failed to create jx client: %w", err)
 	}
 
 	if o.ChangelogSeparator == "" {
@@ -272,7 +271,7 @@ func (o *Options) Validate() error {
 	if o.ExcludeRegexp != "" {
 		o.CompiledExcludeRegexp, err = regexp.Compile(o.ExcludeRegexp)
 		if err != nil {
-			return errors.Wrapf(err, "invalid regexp for option --exclude-regexp")
+			return fmt.Errorf("invalid regexp for option --exclude-regexp: %w", err)
 		}
 	}
 	if o.CommandRunner == nil {
@@ -285,7 +284,7 @@ func (o *Options) Validate() error {
 func (o *Options) Run() error {
 	err := o.Validate()
 	if err != nil {
-		return errors.Wrapf(err, "failed to validate")
+		return fmt.Errorf("failed to validate: %w", err)
 	}
 
 	// lets enable batch mode if we detect we are inside a pipeline
@@ -302,7 +301,7 @@ func (o *Options) Run() error {
 		if previousDate != "" {
 			previousRev, err = gits.GetRevisionBeforeDateText(o.Git(), dir, previousDate)
 			if err != nil {
-				return errors.Wrapf(err, "failed to find commits before date %s", previousDate)
+				return fmt.Errorf("failed to find commits before date %s: %w", previousDate, err)
 			}
 		}
 	}
@@ -313,7 +312,7 @@ func (o *Options) Run() error {
 	if previousRev == "" {
 		tagList, err := gits.NTags(o.Git(), dir, 11, o.TagPrefix)
 		if err != nil {
-			return errors.Wrapf(err, "getting tags in %s", dir)
+			return fmt.Errorf("getting tags in %s: %w", dir, err)
 		}
 		if o.UpdateRelease && scmClient.Releases != nil {
 			for n := 1; n < len(tagList); n++ {
@@ -342,7 +341,7 @@ func (o *Options) Run() error {
 				// let's assume we are the first release
 				previousRev, err = gits.GetFirstCommitSha(o.Git(), dir)
 				if err != nil {
-					return errors.Wrap(err, "failed to find first commit after we found no previous releaes")
+					return fmt.Errorf("failed to find first commit after we found no previous releaes: %w", err)
 				}
 				if previousRev == "" {
 					log.Logger().Info("no previous commit version found so change diff unavailable")
@@ -375,7 +374,7 @@ func (o *Options) Run() error {
 	if templatesDir == "" {
 		chartFile, err := helmhelpers.FindChart(dir)
 		if err != nil {
-			return errors.Wrap(err, "could not find helm chart")
+			return fmt.Errorf("could not find helm chart: %w", err)
 		}
 		if chartFile == "" {
 			log.Logger().Infof("no chart directory found in %s", dir)
@@ -393,7 +392,7 @@ func (o *Options) Run() error {
 	if templatesDir != "" {
 		err = os.MkdirAll(templatesDir, files.DefaultDirWritePermissions)
 		if err != nil {
-			return errors.Wrapf(err, "failed to create the templates directory %s", templatesDir)
+			return fmt.Errorf("failed to create the templates directory %s: %w", templatesDir, err)
 		}
 	}
 
@@ -412,7 +411,7 @@ func (o *Options) Run() error {
 	if gitInfo == nil {
 		gitInfo, err = giturl.ParseGitURL(o.ScmFactory.SourceURL)
 		if err != nil {
-			return errors.Wrapf(err, "failed to parse git URL %s", o.ScmFactory.SourceURL)
+			return fmt.Errorf("failed to parse git URL %s: %w", o.ScmFactory.SourceURL, err)
 		}
 	}
 
@@ -424,7 +423,7 @@ func (o *Options) Run() error {
 
 	o.State.FoundIssueNames = map[string]bool{}
 
-	commits, err := chgit.FetchCommits(gitDir, previousRev, currentRev)
+	commits, err := FetchCommits(gitDir, previousRev, currentRev)
 	if err != nil {
 		if o.FailIfFindCommits {
 			return err
@@ -525,7 +524,7 @@ func (o *Options) Run() error {
 				rel = nil
 			}
 			if err != nil {
-				return errors.Wrapf(err, "failed to query release on repo %s for tag %s", fullName, tagName)
+				return fmt.Errorf("failed to query release on repo %s for tag %s: %w", fullName, tagName, err)
 			}
 
 			if rel == nil {
@@ -585,7 +584,7 @@ func (o *Options) Run() error {
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "failed to unmarshal Release")
+		return fmt.Errorf("failed to unmarshal Release: %w", err)
 	}
 	if data == nil {
 		return fmt.Errorf("could not marshal release to yaml")
@@ -597,25 +596,25 @@ func (o *Options) Run() error {
 		if o.GenerateReleaseYaml {
 			err = os.WriteFile(releaseFile, data, files.DefaultFileWritePermissions)
 			if err != nil {
-				return errors.Wrapf(err, "failed to save Release YAML file %s", releaseFile)
+				return fmt.Errorf("failed to save Release YAML file %s: %w", releaseFile, err)
 			}
 			log.Logger().Infof("generated: %s", info(releaseFile))
 		}
 		if o.GenerateCRD {
 			exists, err := files.FileExists(crdFile)
 			if err != nil {
-				return errors.Wrapf(err, "failed to check for CRD YAML file %s", crdFile)
+				return fmt.Errorf("failed to check for CRD YAML file %s: %w", crdFile, err)
 			}
 			if o.OverwriteCRD || !exists {
 				err = os.WriteFile(crdFile, []byte(ReleaseCrdYaml), files.DefaultFileWritePermissions)
 				if err != nil {
-					return errors.Wrapf(err, "failed to save Release CRD YAML file %s", crdFile)
+					return fmt.Errorf("failed to save Release CRD YAML file %s: %w", crdFile, err)
 				}
 				log.Logger().Infof("generated: %s", info(crdFile))
 
 				err = gitclient.Add(o.Git(), templatesDir)
 				if err != nil {
-					return errors.Wrapf(err, "failed to git add in dir %s", templatesDir)
+					return fmt.Errorf("failed to git add in dir %s: %w", templatesDir, err)
 				}
 			}
 		}
@@ -647,7 +646,7 @@ func (o *Options) Run() error {
 		return updated, nil
 	})
 	if err != nil {
-		return errors.Wrapf(err, "failed to update PipelineActivity")
+		return fmt.Errorf("failed to update PipelineActivity: %w", err)
 	}
 	return nil
 }
@@ -665,7 +664,7 @@ func FindIssueTracker(g gitclient.Interface, jxClient jxc.Interface, ns, dir, ow
 	requirementsConfig, _, err := jxcore.LoadRequirementsConfig(clusterDir, false)
 	var reqIssueTracker *jxcore.IssueTracker
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot load requirements config file")
+		return nil, fmt.Errorf("cannot load requirements config file: %w", err)
 	}
 	if requirementsConfig != nil && !requirementsConfig.Spec.IsEmpty() {
 		reqIssueTracker = requirementsConfig.Spec.Cluster.IssueTracker
@@ -676,7 +675,7 @@ func FindIssueTracker(g gitclient.Interface, jxClient jxc.Interface, ns, dir, ow
 		if issueTracker != nil {
 			err = mergo.Merge(reqIssueTracker, issueTracker, mergo.WithOverride)
 			if err != nil {
-				return nil, errors.Wrap(err, "error merging requirements.spec.cluster Destination from settings")
+				return nil, fmt.Errorf("error merging requirements.spec.cluster Destination from settings: %w", err)
 			}
 		}
 		return reqIssueTracker, nil
@@ -719,12 +718,12 @@ func (o *Options) updatePipelineActivity(fn func(activity *v1.PipelineActivity) 
 		for i := 0; i < 3; i++ {
 			a, _, err := key.GetOrCreate(o.JXClient, o.Namespace)
 			if err != nil {
-				return errors.Wrapf(err, "failed to get PipelineActivity")
+				return fmt.Errorf("failed to get PipelineActivity: %w", err)
 			}
 
 			updated, err := fn(a)
 			if err != nil {
-				return errors.Wrapf(err, "failed to update PipelineActivit %s", name)
+				return fmt.Errorf("failed to update PipelineActivit %s: %w", name, err)
 			}
 			if !updated {
 				return nil
@@ -952,18 +951,18 @@ func (o *Options) getDependencyUpdates(previousRev string) ([]v1.DependencyUpdat
 	}
 	previousReleasesBlob, err := o.Git().Command(dir, "cat-file", "blob", previousRev+":"+o.StatusPath)
 	if err != nil {
-		return nil, errors.Wrapf(err, "fail to check if %s exists for %s", o.StatusPath, previousRev)
+		return nil, fmt.Errorf("fail to check if %s exists for %s: %w", o.StatusPath, previousRev, err)
 	}
 	var previousReleases []*releasereport.NamespaceReleases
 	err = yaml.Unmarshal([]byte(previousReleasesBlob), &previousReleases)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal previous releases %s", previousRev)
+		return nil, fmt.Errorf("failed to unmarshal previous releases %s: %w", previousRev, err)
 	}
 
 	var currentReleases []*releasereport.NamespaceReleases
 	err = yamls.LoadFile(absStatusPath, &currentReleases)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to load %s", o.StatusPath)
+		return nil, fmt.Errorf("failed to load %s: %w", o.StatusPath, err)
 	}
 
 	previousReleasesMap := makeReleaseMap(&previousReleases)
@@ -1028,4 +1027,195 @@ func isReleaseNotFound(err error, gitKind string) bool {
 	default:
 		return scmhelpers.IsScmNotFound(err)
 	}
+}
+
+// The code below is taken from https://github.com/antham/chyle/blob/master/chyle/git/git.go#L3
+// Unfortunately it can't be imported since it uses an outdated version of go-git.
+
+// node is a tree node in commit tree
+type node struct {
+	value  *object.Commit
+	parent *node
+}
+
+// errNoDiffBetweenReferences is triggered when we can't
+// produce any diff between 2 references
+type errNoDiffBetweenReferences struct {
+	from string
+	to   string
+}
+
+func (e errNoDiffBetweenReferences) Error() string {
+	return fmt.Sprintf(`can't produce a diff between %s and %s, check your range is correct by running "git log %[1]s..%[2]s" command`, e.from, e.to)
+}
+
+// errRepositoryPath is triggered when repository path can't be opened
+type errRepositoryPath struct {
+	path string
+}
+
+func (e errRepositoryPath) Error() string {
+	return fmt.Sprintf(`check %q is an existing git repository path`, e.path)
+}
+
+// errReferenceNotFound is triggered when reference can't be
+// found in git repository
+type errReferenceNotFound struct {
+	ref string
+}
+
+func (e errReferenceNotFound) Error() string {
+	return fmt.Sprintf(`reference %q can't be found in git repository`, e.ref)
+}
+
+// errBrowsingTree is triggered when something wrong occurred during commit analysis process
+var errBrowsingTree = fmt.Errorf("an issue occurred during tree analysis")
+
+// FetchCommits retrieves commits in a reference range
+func FetchCommits(repoPath, fromRef, toRef string) (*[]object.Commit, error) {
+	rep, err := git.PlainOpen(repoPath)
+
+	if err != nil {
+		return nil, errRepositoryPath{repoPath}
+	}
+
+	fromCommit, err := resolveRef(fromRef, rep)
+
+	if err != nil {
+		return &[]object.Commit{}, err
+	}
+
+	toCommit, err := resolveRef(toRef, rep)
+
+	if err != nil {
+		return &[]object.Commit{}, err
+	}
+
+	var ok bool
+	var commits *[]object.Commit
+
+	exclusionList, err := buildOriginCommitList(fromCommit)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if _, ok = exclusionList[toCommit.ID().String()]; ok {
+		return nil, errNoDiffBetweenReferences{fromRef, toRef}
+	}
+
+	commits, err = findDiffCommits(toCommit, exclusionList)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(*commits) == 0 {
+		return nil, errNoDiffBetweenReferences{fromRef, toRef}
+	}
+
+	return commits, nil
+}
+
+// resolveRef gives hash commit for a given string reference
+func resolveRef(refCommit string, repository *git.Repository) (*object.Commit, error) {
+	hash := plumbing.Hash{}
+
+	if strings.EqualFold(refCommit, "head") {
+		head, err := repository.Head()
+
+		if err == nil {
+			return repository.CommitObject(head.Hash())
+		}
+	}
+
+	iter, err := repository.References()
+
+	if err != nil {
+		return &object.Commit{}, errReferenceNotFound{refCommit}
+	}
+
+	err = iter.ForEach(func(ref *plumbing.Reference) error {
+		if ref.Name().Short() == refCommit {
+			hash = ref.Hash()
+		}
+
+		return nil
+	})
+
+	if err == nil && !hash.IsZero() {
+		return repository.CommitObject(hash)
+	}
+
+	hash = plumbing.NewHash(refCommit)
+
+	if !hash.IsZero() {
+		return repository.CommitObject(hash)
+	}
+
+	return &object.Commit{}, errReferenceNotFound{refCommit}
+}
+
+// buildOriginCommitList browses git tree from a given commit
+// till root commit using kind of breadth first search algorithm
+// and grab commit ID to a map with ID as key
+func buildOriginCommitList(commit *object.Commit) (map[string]bool, error) {
+	queue := append([]*object.Commit{}, commit)
+	seen := map[string]bool{commit.ID().String(): true}
+
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = append([]*object.Commit{}, queue[1:]...)
+
+		err := current.Parents().ForEach(
+			func(c *object.Commit) error {
+				if _, ok := seen[c.ID().String()]; !ok {
+					seen[c.ID().String()] = true
+					queue = append(queue, c)
+				}
+
+				return nil
+			})
+
+		if err != nil && err.Error() != plumbing.ErrObjectNotFound.Error() {
+			return seen, errBrowsingTree
+		}
+	}
+
+	return seen, nil
+}
+
+// findDiffCommits extracts commits that are no part of a given commit list
+// using kind of depth first search algorithm to keep commits ordered
+func findDiffCommits(commit *object.Commit, exclusionList map[string]bool) (*[]object.Commit, error) {
+	commits := []object.Commit{}
+	queue := append([]*node{}, &node{value: commit})
+	seen := map[string]bool{commit.ID().String(): true}
+	var current *node
+
+	for len(queue) > 0 {
+		current = queue[0]
+		queue = append([]*node{}, queue[1:]...)
+
+		if _, ok := exclusionList[current.value.ID().String()]; !ok {
+			commits = append(commits, *(current.value))
+		}
+
+		err := current.value.Parents().ForEach(
+			func(c *object.Commit) error {
+				if _, ok := seen[c.ID().String()]; !ok {
+					seen[c.ID().String()] = true
+					n := &node{value: c, parent: current}
+					queue = append([]*node{n}, queue...)
+				}
+
+				return nil
+			})
+
+		if err != nil && err.Error() != plumbing.ErrObjectNotFound.Error() {
+			return &commits, errBrowsingTree
+		}
+	}
+
+	return &commits, nil
 }

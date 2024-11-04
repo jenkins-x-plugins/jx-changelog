@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/jenkins-x/jx-helpers/v3/pkg/gitclient"
-	"github.com/pkg/errors"
 )
 
 // GetRevisionBeforeDateText returns the revision before the given date in format "MonthName dayNumber year"
@@ -22,7 +21,7 @@ func GetRevisionBeforeDateText(g gitclient.Interface, dir, dateText string) (str
 func GetCommitPointedToByLatestTag(g gitclient.Interface, dir, prefix string) (string, string, error) {
 	tagList, err := NTags(g, dir, 1, prefix)
 	if err != nil {
-		return "", "", errors.Wrapf(err, "getting commit pointed to by latest tag in %s", dir)
+		return "", "", fmt.Errorf("getting commit pointed to by latest tag in %s: %w", dir, err)
 	}
 	if len(tagList) == 0 {
 		return "", "", nil
@@ -33,7 +32,7 @@ func GetCommitPointedToByLatestTag(g gitclient.Interface, dir, prefix string) (s
 func GetCommitForTagSha(g gitclient.Interface, dir, tagSHA, tagName string) (string, string, error) {
 	commitSHA, err := g.Command(dir, "rev-list", "-n", "1", tagSHA)
 	if err != nil {
-		return "", "", errors.Wrapf(err, "running for git rev-list -n 1 %s", tagSHA)
+		return "", "", fmt.Errorf("running for git rev-list -n 1 %s: %w", tagSHA, err)
 	}
 	return commitSHA, tagName, err
 }
@@ -50,7 +49,7 @@ func NTags(g gitclient.Interface, dir string, n int, prefix string) ([][]string,
 	}
 	out, err := g.Command(dir, args...)
 	if err != nil {
-		return nil, errors.Wrapf(err, "running git %s", strings.Join(args, " "))
+		return nil, fmt.Errorf("running git %s: %w", strings.Join(args, " "), err)
 	}
 
 	tagList := strings.Split(out, "\n")
@@ -59,7 +58,7 @@ func NTags(g gitclient.Interface, dir string, n int, prefix string) ([][]string,
 		fields := strings.Split(tag, "\x00")
 
 		if len(fields) != 2 {
-			return nil, errors.Errorf("Unexpected format for returned tag and sha: '%s'", tagList[n-1])
+			return nil, fmt.Errorf("Unexpected format for returned tag and sha: '%s'", tagList[n-1])
 		}
 		res[i] = fields
 	}

@@ -8,7 +8,6 @@ import (
 
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/stringhelpers"
-	"github.com/pkg/errors"
 )
 
 type GitIssueProvider struct {
@@ -42,7 +41,7 @@ func (i *GitIssueProvider) GetIssue(key string) (*scm.Issue, error) {
 	}
 	issue, _, err := i.GitProvider.Issues.Find(ctx, i.fullName, n)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to find issue %d in repository %s", n, i.fullName)
+		return nil, fmt.Errorf("failed to find issue %d in repository %s: %w", n, i.fullName, err)
 	}
 	return issue, nil
 }
@@ -54,7 +53,7 @@ func (i *GitIssueProvider) SearchIssues(query string) ([]*scm.Issue, error) {
 	}
 	searchIssues, _, err := i.GitProvider.Issues.Search(ctx, opts)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to search issues with %v", opts)
+		return nil, fmt.Errorf("failed to search issues with %v: %w", opts, err)
 	}
 	var answer []*scm.Issue
 	for _, si := range searchIssues {
@@ -76,13 +75,13 @@ func (i *GitIssueProvider) IssueURL(key string) string {
 func issueKeyToNumber(key string) (int, error) {
 	n, err := strconv.Atoi(key)
 	if err != nil {
-		return n, errors.Wrapf(err, "failed to convert issue key '%s' to number", key)
+		return n, fmt.Errorf("failed to convert issue key '%s' to number: %w", key, err)
 	}
 	return n, nil
 }
 
 func (i *GitIssueProvider) CreateIssue(_ *scm.Issue) (*scm.Issue, error) {
-	return nil, errors.Errorf("TODO")
+	return nil, fmt.Errorf("TODO")
 }
 
 func (i *GitIssueProvider) CreateIssueComment(key, comment string) error {
@@ -94,7 +93,7 @@ func (i *GitIssueProvider) CreateIssueComment(key, comment string) error {
 	ci := &scm.CommentInput{Body: comment}
 	_, _, err = i.GitProvider.Issues.CreateComment(ctx, i.fullName, n, ci)
 	if err != nil {
-		return errors.Wrapf(err, "failed to add comment to issue %d on repository %s", n, i.fullName)
+		return fmt.Errorf("failed to add comment to issue %d on repository %s: %w", n, i.fullName, err)
 	}
 	return nil
 }

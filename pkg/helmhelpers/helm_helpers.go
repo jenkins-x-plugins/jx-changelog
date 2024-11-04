@@ -1,11 +1,11 @@
 package helmhelpers
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
 	"github.com/jenkins-x/jx-helpers/v3/pkg/files"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -18,19 +18,19 @@ func FindChart(dir string) (string, error) {
 	chartFile := filepath.Join(dir, ChartFileName)
 	exists, err := files.FileExists(chartFile)
 	if err != nil {
-		return "", errors.Wrapf(err, "no Chart.yaml file found in directory '%s'", dir)
+		return "", fmt.Errorf("no Chart.yaml file found in directory '%s': %w", dir, err)
 	}
 	if !exists {
 		fs, err := filepath.Glob(filepath.Join(dir, "*", "Chart.yaml"))
 		if err != nil {
-			return "", errors.Wrap(err, "no Chart.yaml file found")
+			return "", fmt.Errorf("no Chart.yaml file found: %w", err)
 		}
 		if len(fs) > 0 {
 			chartFile = fs[0]
 		} else {
 			fs, err = filepath.Glob(filepath.Join(dir, "*", "*", "Chart.yaml"))
 			if err != nil {
-				return "", errors.Wrap(err, "no Chart.yaml file found")
+				return "", fmt.Errorf("no Chart.yaml file found: %w", err)
 			}
 			if len(fs) > 0 {
 				for _, file := range fs {

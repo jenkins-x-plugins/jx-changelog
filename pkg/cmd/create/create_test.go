@@ -12,6 +12,8 @@ import (
 	"testing"
 
 	"github.com/ghodss/yaml"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/jenkins-x-plugins/jx-gitops/pkg/releasereport"
 	"github.com/jenkins-x/go-scm/scm"
 	scmfake "github.com/jenkins-x/go-scm/scm/driver/fake"
@@ -21,8 +23,6 @@ import (
 	"github.com/jenkins-x/jx-helpers/v3/pkg/yamls"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/src-d/go-git.v4/plumbing"
-	"gopkg.in/src-d/go-git.v4/plumbing/object"
 )
 
 func TestCreateChangelog(t *testing.T) {
