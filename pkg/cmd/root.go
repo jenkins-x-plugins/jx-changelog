@@ -2,11 +2,11 @@ package cmd
 
 import (
 	"github.com/jenkins-x-plugins/jx-changelog/pkg/cmd/create"
+	"github.com/jenkins-x-plugins/jx-changelog/pkg/common"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/options"
 	"github.com/jenkins-x/jx-logging/v3/pkg/log"
 
 	"github.com/jenkins-x-plugins/jx-changelog/pkg/cmd/version"
-	"github.com/jenkins-x-plugins/jx-changelog/pkg/rootcmd"
 	"github.com/jenkins-x/jx-helpers/v3/pkg/cobras"
 	"github.com/spf13/cobra"
 )
@@ -19,7 +19,9 @@ type Options struct {
 // Main creates the new command
 func Main() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   rootcmd.TopLevelCommand,
+		Annotations: map[string]string{
+			cobra.CommandDisplayNameAnnotation: common.TopLevelCommand,
+		},
 		Short: "Command for working with Changelogs",
 		Run: func(cmd *cobra.Command, args []string) {
 			err := cmd.Help()
