@@ -1023,6 +1023,7 @@ func makeReleaseMap(namespaceReleases *[]*releasereport.NamespaceReleases) map[s
 func isReleaseNotFound(err error, gitKind string) bool {
 	switch gitKind {
 	case "gitlab":
+		// It seems like gitlab is now correctly returning 404 instead of 403, keeping this for now for old on premise gitlab
 		return strings.Contains(err.Error(), "Forbidden") || scmhelpers.IsScmNotFound(err)
 	default:
 		return scmhelpers.IsScmNotFound(err)
