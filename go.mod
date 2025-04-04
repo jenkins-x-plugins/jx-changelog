@@ -8,9 +8,9 @@ require (
 	github.com/go-git/go-git/v5 v5.13.1
 	github.com/imdario/mergo v0.3.16
 	github.com/jenkins-x-plugins/jx-gitops v0.22.4
-	github.com/jenkins-x/go-scm v1.14.53
+	github.com/jenkins-x/go-scm v1.14.57
 	github.com/jenkins-x/jx-api/v4 v4.7.9
-	github.com/jenkins-x/jx-helpers/v3 v3.9.4
+	github.com/jenkins-x/jx-helpers/v3 v3.9.5
 	github.com/jenkins-x/jx-logging/v3 v3.0.17
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1

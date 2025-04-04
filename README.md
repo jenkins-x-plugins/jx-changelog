@@ -10,11 +10,15 @@
 
 ## Debug
 To debug jx changelog inside a Running container:
-First modify you pipeline by editing `release.yaml`  in your project,
-before `jx changelog create --version v${VERSION}` add:
-```shell script
-while sleep 10; do echo "waiting for debug"; done
+First modify you pipeline by editing `release.yaml`  in your project and add
+```yaml
+script: |
+  #!/usr/bin/env sh
+  # default script content before `jx changelog create` in https://github.com/jenkins-x/jx3-pipeline-catalog/blob/master/tasks/gradle/release.yaml or similar
+  while sleep 10; do echo "waiting for debug"; done
 ```
+to the step `promote-changelog`
+
 build your version of jx changelog locally, and copy it inside the container
 ```shell script
 make build
@@ -26,9 +30,11 @@ kubectl exec -it release-xxxxxxxx -c step-promote-changelog -- sh
 ```
 and run:
 ```shell script
-apk update
-apk add go
-go get github.com/go-delve/delve/cmd/dlv
+# apk update; apk add go doesn't work anymore, version of alpine too old
+wget https://go.dev/dl/go1.22.1.linux-amd64.tar.gz
+tar -C /usr/local -xzf go1.22.1.linux-amd64.tar.gz
+export PATH=$PATH:/usr/local/go/bin
+go install github.com/go-delve/delve/cmd/dlv@latest
 ```
 then debug your binary using dlv
 ```shell script
