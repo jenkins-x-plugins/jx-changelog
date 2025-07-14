@@ -1024,7 +1024,11 @@ func isReleaseNotFound(err error, gitKind string) bool {
 	switch gitKind {
 	case "gitlab":
 		// It seems like gitlab is now correctly returning 404 instead of 403, keeping this for now for old on premise gitlab
-		return strings.Contains(err.Error(), "Forbidden") || scmhelpers.IsScmNotFound(err)
+		if err != nil {
+			return strings.Contains(err.Error(), "Forbidden") || scmhelpers.IsScmNotFound(err)
+		} else {
+			return false
+		}
 	default:
 		return scmhelpers.IsScmNotFound(err)
 	}
