@@ -150,6 +150,8 @@ func TestCreateDependencyUpdates(t *testing.T) {
 	replaceRel.ReleaseName = "the-new-name"
 	err = yamls.SaveFile(currentReleases, absStatusPath)
 	require.NoError(t, err, "failed to save status file")
+	_, _, err = gitclient.EnsureUserAndEmailSetup(g, tmpDir, "", "")
+	require.NoError(t, err, "failed to make sure git user is set")
 	err = gitclient.Add(g, tmpDir, ".")
 	require.NoError(t, err, "failed to add changes")
 	err = gitclient.CommitIfChanges(g, tmpDir, "chore: upgrade")
