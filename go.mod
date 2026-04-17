@@ -5,7 +5,7 @@ require (
 	github.com/cpuguy83/go-md2man v1.0.10
 	github.com/emirpasic/gods v1.18.1
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
-	github.com/go-git/go-git/v5 v5.17.1
+	github.com/go-git/go-git/v5 v5.18.0
 	github.com/imdario/mergo v0.3.16
 	github.com/jenkins-x-plugins/jx-gitops v0.22.4
 	github.com/jenkins-x/go-scm v1.15.1
